@@ -1,0 +1,52 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '9.0.x'
+    
+    - name: Restore dependencies
+      run: dotnet restore
+    
+    - name: Build
+      run: dotnet build --configuration Release --no-restore
+    
+    - name: Test
+      run: dotnet test --no-build --verbosity normal
+    
+    - name: Publish
+      run: dotnet publish src/MemoryKit.API/MemoryKit.API.csproj -c Release -o ./publish
+    
+    - name: Create Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        body_path: CHANGELOG.md
+        draft: false
+        prerelease: false
+    
+    - name: Build Docker image
+      run: docker build -t memorykit:${{ github.ref_name }} .
+    
+    - name: Push to registry
+      run: |
+        docker tag memorykit:${{ github.ref_name }} memorykit.azurecr.io/memorykit:${{ github.ref_name }}
+        docker tag memorykit:${{ github.ref_name }} memorykit.azurecr.io/memorykit:latest
+        docker login -u ${{ secrets.REGISTRY_USERNAME }} -p ${{ secrets.REGISTRY_PASSWORD }} memorykit.azurecr.io
+        docker push memorykit.azurecr.io/memorykit:${{ github.ref_name }}
+        docker push memorykit.azurecr.io/memorykit:latest
