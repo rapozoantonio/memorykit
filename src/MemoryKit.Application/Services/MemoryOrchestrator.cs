@@ -231,6 +231,33 @@ public class MemoryOrchestrator : IMemoryOrchestrator
     }
 
     /// <summary>
+    /// Deletes all user data across all memory layers (GDPR compliance).
+    /// </summary>
+    public async Task DeleteUserDataAsync(
+        string userId,
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogWarning(
+            "Initiating full data deletion for user {UserId} (GDPR request)",
+            userId);
+
+        var deletionTasks = new[]
+        {
+            // Delete from all memory layers in parallel
+            _workingMemory.DeleteUserDataAsync(userId, cancellationToken),
+            _scratchpad.DeleteUserDataAsync(userId, cancellationToken),
+            _episodicMemory.DeleteUserDataAsync(userId, cancellationToken),
+            _proceduralMemory.DeleteUserDataAsync(userId, cancellationToken)
+        };
+
+        await Task.WhenAll(deletionTasks);
+
+        _logger.LogInformation(
+            "Successfully deleted all data for user {UserId}",
+            userId);
+    }
+
+    /// <summary>
     /// Calculates estimated token count for the assembled context.
     /// Simple heuristic: ~4 characters per token.
     /// </summary>

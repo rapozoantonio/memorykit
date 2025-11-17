@@ -51,11 +51,9 @@ public class MemoryRetrievalBenchmarks
             semanticKernel);
 
         var prefrontal = new PrefrontalController(
-            semanticKernel,
             loggerFactory.CreateLogger<PrefrontalController>());
 
         var amygdala = new AmygdalaImportanceEngine(
-            semanticKernel,
             loggerFactory.CreateLogger<AmygdalaImportanceEngine>());
 
         _orchestrator = new MemoryOrchestrator(
@@ -65,8 +63,7 @@ public class MemoryRetrievalBenchmarks
             procedural,
             prefrontal,
             amygdala,
-            _logger,
-            semanticKernel);
+            _logger);
 
         // Pre-populate with test data
         SeedTestData(workingMemory, scratchpad, episodic).Wait();
@@ -94,19 +91,16 @@ public class MemoryRetrievalBenchmarks
         var facts = new ExtractedFact[50];
         for (int i = 0; i < 50; i++)
         {
-            facts[i] = new ExtractedFact
-            {
-                Id = $"fact_{i}",
-                UserId = _testUserId,
-                ConversationId = _testConversationId,
-                Key = $"TestFact_{i}",
-                Value = $"Test value {i}",
-                Type = EntityType.Other,
-                Importance = 0.5 + (i * 0.01),
-                Embedding = GenerateRandomEmbedding(),
-                LastAccessed = DateTime.UtcNow,
-                AccessCount = 1
-            };
+            var fact = ExtractedFact.Create(
+                _testUserId,
+                _testConversationId,
+                $"TestFact_{i}",
+                $"Test value {i}",
+                EntityType.Other,
+                0.5 + (i * 0.01));
+
+            fact.SetEmbedding(GenerateRandomEmbedding());
+            facts[i] = fact;
         }
 
         await scratchpad.StoreFactsAsync(_testUserId, _testConversationId, facts);

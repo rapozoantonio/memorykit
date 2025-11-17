@@ -116,7 +116,7 @@ public class QueryMemoryHandler : IRequestHandler<QueryMemoryQuery, QueryMemoryR
         {
             debugInfo = new DebugInfo
             {
-                QueryPlanType = memoryContext.QueryPlan.Type.ToString(),
+                QueryType = memoryContext.QueryPlan.Type,
                 LayersUsed = memoryContext.QueryPlan.LayersToUse.Select(l => l.ToString()).ToArray(),
                 TokensUsed = memoryContext.TotalTokens,
                 RetrievalTimeMs = (long)retrievalTime
