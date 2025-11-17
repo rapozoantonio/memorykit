@@ -1,6 +1,6 @@
 using MemoryKit.Domain.Entities;
+using MemoryKit.Domain.Interfaces;
 using MemoryKit.Domain.ValueObjects;
-using MemoryKit.Infrastructure.SemanticKernel;
 using Microsoft.Extensions.Logging;
 
 namespace MemoryKit.Infrastructure.Cognitive;

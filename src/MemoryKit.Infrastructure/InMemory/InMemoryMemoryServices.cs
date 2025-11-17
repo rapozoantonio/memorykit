@@ -1,5 +1,5 @@
 using MemoryKit.Domain.Entities;
-using MemoryKit.Infrastructure.Azure;
+using MemoryKit.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
 
 namespace MemoryKit.Infrastructure.InMemory;

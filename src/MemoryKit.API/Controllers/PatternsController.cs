@@ -1,5 +1,5 @@
 using MediatR;
-using MemoryKit.Infrastructure.Azure;
+using MemoryKit.Domain.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MemoryKit.API.Controllers;

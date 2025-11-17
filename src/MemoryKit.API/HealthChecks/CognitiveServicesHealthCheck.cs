@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using MemoryKit.Infrastructure.Cognitive;
 using MemoryKit.Domain.Interfaces;
 
 namespace MemoryKit.API.HealthChecks;

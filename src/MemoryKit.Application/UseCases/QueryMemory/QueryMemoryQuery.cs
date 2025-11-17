@@ -2,7 +2,6 @@ using System.Diagnostics;
 using MediatR;
 using MemoryKit.Application.DTOs;
 using MemoryKit.Domain.Interfaces;
-using MemoryKit.Infrastructure.SemanticKernel;
 
 namespace MemoryKit.Application.UseCases.QueryMemory;
 
@@ -19,13 +18,13 @@ public record QueryMemoryQuery(
 /// </summary>
 public class QueryMemoryHandler : IRequestHandler<QueryMemoryQuery, QueryMemoryResponse>
 {
-    private readonly Domain.Interfaces.IMemoryOrchestrator _orchestrator;
-    private readonly Infrastructure.SemanticKernel.ISemanticKernelService _llm;
+    private readonly IMemoryOrchestrator _orchestrator;
+    private readonly ISemanticKernelService _llm;
     private readonly ILogger<QueryMemoryHandler> _logger;
 
     public QueryMemoryHandler(
-        Domain.Interfaces.IMemoryOrchestrator orchestrator,
-        Infrastructure.SemanticKernel.ISemanticKernelService llm,
+        IMemoryOrchestrator orchestrator,
+        ISemanticKernelService llm,
         ILogger<QueryMemoryHandler> logger)
     {
         _orchestrator = orchestrator;

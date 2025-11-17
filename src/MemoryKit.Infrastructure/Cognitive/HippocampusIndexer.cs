@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 using MemoryKit.Domain.Entities;
-using MemoryKit.Infrastructure.Azure;
+using MemoryKit.Domain.Interfaces;
 
 namespace MemoryKit.Infrastructure.Cognitive;
 
