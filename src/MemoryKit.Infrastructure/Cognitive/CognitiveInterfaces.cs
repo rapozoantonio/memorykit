@@ -55,6 +55,47 @@ public interface IHippocampusIndexer
     Task ConsolidateAsync(
         string userId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Performs consolidation for a specific conversation.
+    /// </summary>
+    Task ConsolidateAsync(
+        string userId,
+        string conversationId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Indexes a single message immediately.
+    /// </summary>
+    Task IndexAsync(
+        Message message,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Prunes old memories based on retention period.
+    /// </summary>
+    Task PruneOldMemoriesAsync(
+        string userId,
+        TimeSpan retentionPeriod,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets consolidation metrics for a user.
+    /// </summary>
+    Task<ConsolidationMetrics> GetConsolidationMetricsAsync(
+        string userId,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// Metrics about memory consolidation.
+/// </summary>
+public record ConsolidationMetrics
+{
+    public string UserId { get; init; } = string.Empty;
+    public DateTime LastConsolidation { get; init; }
+    public int MessagesConsolidated { get; init; }
+    public double AverageImportanceScore { get; init; }
 }
 
 /// <summary>

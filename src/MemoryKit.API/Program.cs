@@ -59,11 +59,29 @@ builder.Services.AddSingleton<MemoryKit.Infrastructure.SemanticKernel.ISemanticK
 builder.Services.AddSingleton<MemoryKit.Infrastructure.Azure.IWorkingMemoryService, MemoryKit.Infrastructure.InMemory.InMemoryWorkingMemoryService>();
 builder.Services.AddSingleton<MemoryKit.Infrastructure.Azure.IScratchpadService, MemoryKit.Infrastructure.InMemory.InMemoryScratchpadService>();
 builder.Services.AddSingleton<MemoryKit.Infrastructure.Azure.IEpisodicMemoryService, MemoryKit.Infrastructure.InMemory.InMemoryEpisodicMemoryService>();
-builder.Services.AddSingleton<MemoryKit.Infrastructure.Azure.IProceduralMemoryService, MemoryKit.Infrastructure.InMemory.InMemoryProceduralMemoryService>();
+
+// Register Enhanced Procedural Memory Service with AI support
+builder.Services.AddSingleton<MemoryKit.Infrastructure.Azure.IProceduralMemoryService>(sp =>
+{
+    var logger = sp.GetRequiredService<ILogger<MemoryKit.Infrastructure.InMemory.EnhancedInMemoryProceduralMemoryService>>();
+    var semanticKernel = sp.GetService<MemoryKit.Infrastructure.SemanticKernel.ISemanticKernelService>();
+    return new MemoryKit.Infrastructure.InMemory.EnhancedInMemoryProceduralMemoryService(logger, semanticKernel);
+});
 
 // Register Cognitive Services
 builder.Services.AddSingleton<MemoryKit.Infrastructure.Cognitive.IPrefrontalController, MemoryKit.Application.Services.PrefrontalController>();
 builder.Services.AddSingleton<MemoryKit.Infrastructure.Cognitive.IAmygdalaImportanceEngine, MemoryKit.Application.Services.AmygdalaImportanceEngine>();
+
+// Register Hippocampus Indexer for memory consolidation
+builder.Services.AddSingleton<MemoryKit.Infrastructure.Cognitive.IHippocampusIndexer>(sp =>
+{
+    var workingMemory = sp.GetRequiredService<MemoryKit.Infrastructure.Azure.IWorkingMemoryService>();
+    var scratchpad = sp.GetRequiredService<MemoryKit.Infrastructure.Azure.IScratchpadService>();
+    var episodic = sp.GetRequiredService<MemoryKit.Infrastructure.Azure.IEpisodicMemoryService>();
+    var amygdala = sp.GetRequiredService<MemoryKit.Infrastructure.Cognitive.IAmygdalaImportanceEngine>();
+    var logger = sp.GetRequiredService<ILogger<MemoryKit.Infrastructure.Cognitive.HippocampusIndexer>>();
+    return new MemoryKit.Infrastructure.Cognitive.HippocampusIndexer(workingMemory, scratchpad, episodic, amygdala, logger);
+});
 
 // Register Orchestrator (now receives ISemanticKernelService)
 builder.Services.AddSingleton<MemoryKit.Domain.Interfaces.IMemoryOrchestrator>(sp =>
