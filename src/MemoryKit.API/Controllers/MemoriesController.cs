@@ -33,23 +33,35 @@ public class MemoriesController : ControllerBase
     /// <summary>
     /// Retrieves statistics about user's memory usage.
     /// </summary>
+    /// <remarks>
+    /// Note: Statistics aggregation is not yet implemented in the MVP.
+    /// This endpoint returns placeholder data and will be enhanced in future releases
+    /// to query actual statistics from the memory layers.
+    /// </remarks>
     [HttpGet("statistics")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetStatistics(CancellationToken cancellationToken)
+    public IActionResult GetStatistics()
     {
         try
         {
             var userId = User.FindFirst("sub")?.Value ?? throw new InvalidOperationException("User ID not found");
 
-            // TODO: Implement statistics retrieval
-            return Ok(new
+            _logger.LogInformation("Retrieving statistics for user {UserId}", userId);
+
+            // Statistics aggregation will be implemented in future releases
+            // Currently using in-memory storage without cross-service statistics tracking
+            var statistics = new
             {
                 userId,
                 conversationCount = 0,
                 messageCount = 0,
                 factCount = 0,
-                patternCount = 0
-            });
+                patternCount = 0,
+                lastUpdated = DateTime.UtcNow,
+                note = "Statistics aggregation not yet implemented in MVP"
+            };
+
+            return Ok(statistics);
         }
         catch (Exception ex)
         {

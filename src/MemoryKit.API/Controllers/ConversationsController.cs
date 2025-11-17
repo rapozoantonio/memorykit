@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using MemoryKit.Application.DTOs;
 using MemoryKit.Application.UseCases.AddMessage;
+using MemoryKit.Application.UseCases.CreateConversation;
 using MemoryKit.Application.UseCases.GetContext;
 using MemoryKit.Application.UseCases.QueryMemory;
 
@@ -35,10 +36,12 @@ public class ConversationsController : ControllerBase
     {
         try
         {
-            _logger.LogInformation("Creating conversation with title: {Title}", request.Title);
-            
-            // TODO: Implement through mediator
-            throw new NotImplementedException();
+            var userId = User.FindFirst("sub")?.Value ?? throw new InvalidOperationException("User ID not found");
+
+            var command = new CreateConversationCommand(userId, request);
+            var result = await _mediator.Send(command, cancellationToken);
+
+            return CreatedAtAction(nameof(CreateConversation), new { id = result.Id }, result);
         }
         catch (Exception ex)
         {

@@ -281,7 +281,7 @@ builder.Services.AddSingleton<MemoryKit.Domain.Interfaces.IMemoryOrchestrator>(s
     var semanticKernel = sp.GetService<MemoryKit.Infrastructure.SemanticKernel.ISemanticKernelService>();
 
     return new MemoryKit.Application.Services.MemoryOrchestrator(
-        workingMemory, scratchpad, episodic, procedural, prefrontal, amygdala, logger, semanticKernel);
+        workingMemory, scratchpad, episodic, procedural, prefrontal, amygdala, logger);
 });
 
 // ============================================================================
