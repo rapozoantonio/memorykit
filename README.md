@@ -1,11 +1,31 @@
 # 🧠 **MemoryKit: Technical Requirements Document**
 
-**Version:** 1.0.0  
-**Status:** Implementation Ready  
-**Author:** Antonio Rapozo  
-**Date:** November 16, 2025  
-**License:** MIT  
-**Repository:** github.com/antoniorapozo/memorykit  
+<div align="center">
+
+[![CI/CD Pipeline](https://github.com/rapozoantonio/memorykit/actions/workflows/main.yml/badge.svg)](https://github.com/rapozoantonio/memorykit/actions/workflows/main.yml)
+[![codecov](https://codecov.io/gh/rapozoantonio/memorykit/branch/main/graph/badge.svg)](https://codecov.io/gh/rapozoantonio/memorykit)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![.NET](https://img.shields.io/badge/.NET-9.0-512BD4)](https://dotnet.microsoft.com/)
+[![Docker](https://img.shields.io/badge/Docker-Available-2496ED?logo=docker)](https://hub.docker.com/r/memorykit/api)
+
+[![GitHub issues](https://img.shields.io/github/issues/rapozoantonio/memorykit)](https://github.com/rapozoantonio/memorykit/issues)
+[![GitHub pull requests](https://img.shields.io/github/issues-pr/rapozoantonio/memorykit)](https://github.com/rapozoantonio/memorykit/pulls)
+[![GitHub stars](https://img.shields.io/github/stars/rapozoantonio/memorykit?style=social)](https://github.com/rapozoantonio/memorykit/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/rapozoantonio/memorykit?style=social)](https://github.com/rapozoantonio/memorykit/network/members)
+
+[![Code Quality](https://img.shields.io/codefactor/grade/github/rapozoantonio/memorykit)](https://www.codefactor.io/repository/github/rapozoantonio/memorykit)
+[![Security](https://img.shields.io/badge/Security-Trivy%20%2B%20CodeQL-green)](https://github.com/rapozoantonio/memorykit/security)
+[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/rapozoantonio/memorykit/graphs/commit-activity)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
+
+</div>
+
+**Version:** 1.0.0
+**Status:** 🚀 Production Ready
+**Author:** Antonio Rapozo
+**Date:** November 17, 2025
+**License:** MIT
+**Repository:** [github.com/rapozoantonio/memorykit](https://github.com/rapozoantonio/memorykit)
 
 ---
 

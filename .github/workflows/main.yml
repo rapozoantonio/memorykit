@@ -1,0 +1,534 @@
+name: Enterprise CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop, claude/**]
+    tags: ['v*']
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '9.0.x'
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  BUILD_CONFIGURATION: Release
+
+# Prevent concurrent runs on same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ============================================================================
+  # CODE QUALITY & LINTING
+  # ============================================================================
+  code-quality:
+    name: Code Quality & Linting
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Format check
+        run: dotnet format --verify-no-changes --verbosity diagnostic
+
+      - name: Build with code analysis
+        run: |
+          dotnet build \
+            --no-restore \
+            --configuration ${{ env.BUILD_CONFIGURATION }} \
+            -p:TreatWarningsAsErrors=true \
+            -p:WarningLevel=4 \
+            -p:EnableNETAnalyzers=true \
+            -p:AnalysisLevel=latest \
+            -p:EnforceCodeStyleInBuild=true
+
+  # ============================================================================
+  # SECURITY SCANNING
+  # ============================================================================
+  security:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      security-events: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      # Dependency vulnerability scanning
+      - name: Run NuGet vulnerability scan
+        run: dotnet list package --vulnerable --include-transitive 2>&1 | tee vulnerabilities.txt
+        continue-on-error: true
+
+      - name: Check for vulnerabilities
+        run: |
+          if grep -q "has the following vulnerable packages" vulnerabilities.txt; then
+            echo "::error::Vulnerable dependencies detected"
+            cat vulnerabilities.txt
+            exit 1
+          fi
+
+      # Trivy security scanner
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      # CodeQL analysis
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: 'csharp'
+          queries: security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
+  # ============================================================================
+  # BUILD & TEST
+  # ============================================================================
+  build-and-test:
+    name: Build & Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build solution
+        run: dotnet build --no-restore --configuration ${{ env.BUILD_CONFIGURATION }}
+
+      - name: Run unit tests
+        run: |
+          dotnet test \
+            --no-build \
+            --configuration ${{ env.BUILD_CONFIGURATION }} \
+            --filter "Category=Unit" \
+            --collect:"XPlat Code Coverage" \
+            --results-directory ./coverage \
+            --logger "trx;LogFileName=unit-tests.trx" \
+            -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+
+      - name: Run integration tests
+        run: |
+          dotnet test \
+            --no-build \
+            --configuration ${{ env.BUILD_CONFIGURATION }} \
+            --filter "Category=Integration" \
+            --logger "trx;LogFileName=integration-tests.trx"
+        continue-on-error: true
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.os }}
+          path: |
+            **/*.trx
+            ./coverage/*/coverage.opencover.xml
+          retention-days: 30
+
+      - name: Upload coverage to Codecov
+        if: matrix.os == 'ubuntu-latest'
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage/*/coverage.opencover.xml
+          flags: unittests
+          name: codecov-${{ matrix.os }}
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  # ============================================================================
+  # PERFORMANCE BENCHMARKS
+  # ============================================================================
+  benchmarks:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build benchmarks
+        run: dotnet build tests/MemoryKit.Benchmarks/MemoryKit.Benchmarks.csproj --configuration Release
+
+      - name: Run benchmarks
+        run: |
+          dotnet run \
+            --project tests/MemoryKit.Benchmarks/MemoryKit.Benchmarks.csproj \
+            --configuration Release \
+            --no-build \
+            -- --exporters json --memory
+        continue-on-error: true
+
+      - name: Store benchmark results
+        uses: benchmark-action/github-action-benchmark@v1
+        if: github.ref == 'refs/heads/main'
+        with:
+          tool: 'benchmarkdotnet'
+          output-file-path: tests/MemoryKit.Benchmarks/BenchmarkDotNet.Artifacts/results/combined.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          alert-threshold: '150%'
+          comment-on-alert: true
+
+      - name: Upload benchmark artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: benchmark-results
+          path: tests/MemoryKit.Benchmarks/BenchmarkDotNet.Artifacts/**
+          retention-days: 90
+
+  # ============================================================================
+  # DOCKER BUILD
+  # ============================================================================
+  docker:
+    name: Docker Build & Push
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [build-and-test, code-quality, security]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/tags/'))
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha,prefix={{branch}}-
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+  # ============================================================================
+  # PUBLISH PACKAGES
+  # ============================================================================
+  publish:
+    name: Publish NuGet Packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [build-and-test, code-quality, security]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Pack libraries
+        run: |
+          dotnet pack src/MemoryKit.Domain/MemoryKit.Domain.csproj \
+            --configuration ${{ env.BUILD_CONFIGURATION }} \
+            --output ./packages \
+            -p:PackageVersion=0.1.0-alpha.${{ github.run_number }}
+
+          dotnet pack src/MemoryKit.Application/MemoryKit.Application.csproj \
+            --configuration ${{ env.BUILD_CONFIGURATION }} \
+            --output ./packages \
+            -p:PackageVersion=0.1.0-alpha.${{ github.run_number }}
+
+          dotnet pack src/MemoryKit.Infrastructure/MemoryKit.Infrastructure.csproj \
+            --configuration ${{ env.BUILD_CONFIGURATION }} \
+            --output ./packages \
+            -p:PackageVersion=0.1.0-alpha.${{ github.run_number }}
+
+      - name: Push to GitHub Packages
+        run: |
+          dotnet nuget push "./packages/*.nupkg" \
+            --source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" \
+            --api-key ${{ secrets.GITHUB_TOKEN }} \
+            --skip-duplicate
+
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages
+          path: ./packages/*.nupkg
+          retention-days: 90
+
+  # ============================================================================
+  # DEPLOY TO AZURE DEV
+  # ============================================================================
+  deploy-dev:
+    name: Deploy to Azure (Dev)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [build-and-test, code-quality, security]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    environment:
+      name: development
+      url: ${{ steps.deploy.outputs.webapp-url }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Publish API
+        run: |
+          dotnet publish src/MemoryKit.API/MemoryKit.API.csproj \
+            --configuration ${{ env.BUILD_CONFIGURATION }} \
+            --output ./publish \
+            -p:PublishReadyToRun=true \
+            -p:PublishSingleFile=false \
+            -p:IncludeNativeLibrariesForSelfExtract=true
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS_DEV }}
+
+      - name: Deploy to Azure App Service
+        id: deploy
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME_DEV }}
+          package: ./publish
+
+      - name: Health check
+        run: |
+          sleep 30
+          curl -f ${{ steps.deploy.outputs.webapp-url }}/health || exit 1
+          curl -f ${{ steps.deploy.outputs.webapp-url }}/health/ready || exit 1
+
+  # ============================================================================
+  # DEPLOY TO AZURE PROD
+  # ============================================================================
+  deploy-prod:
+    name: Deploy to Azure (Production)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [build-and-test, code-quality, security, benchmarks]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.webapp-url }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Publish API
+        run: |
+          dotnet publish src/MemoryKit.API/MemoryKit.API.csproj \
+            --configuration ${{ env.BUILD_CONFIGURATION }} \
+            --output ./publish \
+            -p:PublishReadyToRun=true \
+            -p:PublishSingleFile=false \
+            -p:IncludeNativeLibrariesForSelfExtract=true \
+            -p:DebugType=None \
+            -p:DebugSymbols=false
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS_PROD }}
+
+      - name: Deploy to Azure App Service
+        id: deploy
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME_PROD }}
+          package: ./publish
+          slot-name: staging
+
+      - name: Health check (staging)
+        run: |
+          sleep 30
+          curl -f ${{ steps.deploy.outputs.webapp-url }}/health || exit 1
+          curl -f ${{ steps.deploy.outputs.webapp-url }}/health/ready || exit 1
+
+      - name: Swap to production
+        run: |
+          az webapp deployment slot swap \
+            --name ${{ secrets.AZURE_WEBAPP_NAME_PROD }} \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --slot staging \
+            --target-slot production
+
+      - name: Health check (production)
+        run: |
+          sleep 15
+          curl -f https://${{ secrets.AZURE_WEBAPP_NAME_PROD }}.azurewebsites.net/health || exit 1
+
+  # ============================================================================
+  # RELEASE
+  # ============================================================================
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [build-and-test, code-quality, security]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          # Extract version from tag
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          # Generate changelog
+          if [ -f CHANGELOG.md ]; then
+            # Extract section for this version from CHANGELOG
+            awk "/^## \[$VERSION\]/,/^## \[/{if(/^## \[/ && !/^## \[$VERSION\]/)exit;print}" CHANGELOG.md > release_notes.md
+          else
+            echo "No changelog found" > release_notes.md
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          body_path: release_notes.md
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ============================================================================
+  # NOTIFICATION
+  # ============================================================================
+  notify:
+    name: Notify on Failure
+    runs-on: ubuntu-latest
+    needs: [build-and-test, code-quality, security]
+    if: failure() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+
+    steps:
+      - name: Send notification
+        run: |
+          echo "Pipeline failed for ${{ github.ref }}"
+          echo "See details: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

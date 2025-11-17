@@ -1,0 +1,69 @@
+<Project>
+  <PropertyGroup>
+    <!-- Common Properties -->
+    <LangVersion>12.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningLevel>4</WarningLevel>
+
+    <!-- Code Analysis -->
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisMode>AllEnabledByDefault</AnalysisMode>
+
+    <!-- NuGet Package Properties -->
+    <Authors>Antonio Rapozo</Authors>
+    <Company>MemoryKit</Company>
+    <Product>MemoryKit</Product>
+    <Copyright>Copyright © 2025 Antonio Rapozo</Copyright>
+    <PackageProjectUrl>https://github.com/rapozoantonio/memorykit</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/rapozoantonio/memorykit</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageTags>llm;memory;ai;azure;semantic-kernel;cognitive;neuroscience</PackageTags>
+    <Description>Enterprise-grade, neuroscience-inspired memory infrastructure for LLM applications</Description>
+
+    <!-- Source Link -->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
+    <!-- Deterministic Builds -->
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+
+  <!-- Package References for All Projects -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
+  </ItemGroup>
+
+  <!-- Warning Suppressions -->
+  <PropertyGroup>
+    <!-- Suppress specific warnings if needed -->
+    <!-- <NoWarn>$(NoWarn);CA1014</NoWarn> -->
+  </PropertyGroup>
+
+  <!-- Test Project Properties -->
+  <PropertyGroup Condition="$(MSBuildProjectName.Contains('Tests'))">
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <!-- Benchmark Project Properties -->
+  <PropertyGroup Condition="$(MSBuildProjectName.Contains('Benchmarks'))">
+    <IsPackable>false</IsPackable>
+    <ServerGarbageCollection>true</ServerGarbageCollection>
+    <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
+  </PropertyGroup>
+
+  <!-- Sample Project Properties -->
+  <PropertyGroup Condition="$(MSBuildProjectName.Contains('Demo'))">
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+</Project>

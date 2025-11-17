@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or Discussion
+    url: https://github.com/rapozoantonio/memorykit/discussions
+    about: Ask questions or discuss ideas with the community
+  - name: Security Vulnerability
+    url: https://github.com/rapozoantonio/memorykit/security/advisories/new
+    about: Report a security vulnerability (private)
+  - name: Discord Community
+    url: https://discord.gg/memorykit
+    about: Join our Discord server for real-time help and discussions

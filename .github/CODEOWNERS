@@ -1,0 +1,41 @@
+# Code Owners for MemoryKit
+# These owners will be automatically requested for review when someone opens a PR
+
+# Default owners for everything in the repo
+* @rapozoantonio
+
+# Core domain logic
+/src/MemoryKit.Domain/ @rapozoantonio
+
+# Application layer
+/src/MemoryKit.Application/ @rapozoantonio
+
+# Infrastructure
+/src/MemoryKit.Infrastructure/ @rapozoantonio
+
+# API
+/src/MemoryKit.API/ @rapozoantonio
+
+# Tests
+/tests/ @rapozoantonio
+
+# Documentation
+/*.md @rapozoantonio
+/docs/ @rapozoantonio
+
+# CI/CD and workflows
+/.github/ @rapozoantonio
+
+# Configuration files
+*.yml @rapozoantonio
+*.yaml @rapozoantonio
+*.json @rapozoantonio
+
+# Docker
+Dockerfile @rapozoantonio
+docker-compose.yml @rapozoantonio
+.dockerignore @rapozoantonio
+
+# Security-sensitive files (require extra review)
+/src/MemoryKit.Infrastructure/Azure/ @rapozoantonio
+/src/MemoryKit.API/Middleware/ @rapozoantonio
