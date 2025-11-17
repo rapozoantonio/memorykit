@@ -47,6 +47,19 @@ builder.Services.AddMediatR(config =>
 // Add health checks
 builder.Services.AddHealthChecks();
 
+// Register Memory Services (In-Memory implementations for MVP)
+builder.Services.AddSingleton<MemoryKit.Infrastructure.Azure.IWorkingMemoryService, MemoryKit.Infrastructure.InMemory.InMemoryWorkingMemoryService>();
+builder.Services.AddSingleton<MemoryKit.Infrastructure.Azure.IScratchpadService, MemoryKit.Infrastructure.InMemory.InMemoryScratchpadService>();
+builder.Services.AddSingleton<MemoryKit.Infrastructure.Azure.IEpisodicMemoryService, MemoryKit.Infrastructure.InMemory.InMemoryEpisodicMemoryService>();
+builder.Services.AddSingleton<MemoryKit.Infrastructure.Azure.IProceduralMemoryService, MemoryKit.Infrastructure.InMemory.InMemoryProceduralMemoryService>();
+
+// Register Cognitive Services
+builder.Services.AddSingleton<MemoryKit.Infrastructure.Cognitive.IPrefrontalController, MemoryKit.Application.Services.PrefrontalController>();
+builder.Services.AddSingleton<MemoryKit.Infrastructure.Cognitive.IAmygdalaImportanceEngine, MemoryKit.Application.Services.AmygdalaImportanceEngine>();
+
+// Register Orchestrator
+builder.Services.AddSingleton<MemoryKit.Domain.Interfaces.IMemoryOrchestrator, MemoryKit.Application.Services.MemoryOrchestrator>();
+
 // Build the app
 var app = builder.Build();
 

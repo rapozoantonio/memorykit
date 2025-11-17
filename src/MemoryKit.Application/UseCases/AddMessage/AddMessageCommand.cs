@@ -1,6 +1,7 @@
 using MediatR;
 using MemoryKit.Application.DTOs;
 using MemoryKit.Domain.Entities;
+using MemoryKit.Domain.Interfaces;
 
 namespace MemoryKit.Application.UseCases.AddMessage;
 
@@ -17,11 +18,15 @@ public record AddMessageCommand(
 /// </summary>
 public class AddMessageHandler : IRequestHandler<AddMessageCommand, MessageResponse>
 {
+    private readonly IMemoryOrchestrator _orchestrator;
     private readonly ILogger<AddMessageHandler> _logger;
 
-    public AddMessageHandler(ILogger<AddMessageHandler> logger)
+    public AddMessageHandler(
+        IMemoryOrchestrator orchestrator,
+        ILogger<AddMessageHandler> logger)
     {
-        _logger = logger;
+        _orchestrator = orchestrator ?? throw new ArgumentNullException(nameof(orchestrator));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     public async Task<MessageResponse> Handle(
@@ -47,9 +52,17 @@ public class AddMessageHandler : IRequestHandler<AddMessageCommand, MessageRespo
         if (request.Request.Tags?.Length > 0)
             message.Metadata = message.Metadata with { Tags = request.Request.Tags };
 
-        // TODO: Store through IMemoryOrchestrator
-        // TODO: Apply importance scoring
-        // TODO: Extract entities
+        // Store through orchestrator (handles importance scoring and entity extraction)
+        await _orchestrator.StoreAsync(
+            request.UserId,
+            request.ConversationId,
+            message,
+            cancellationToken);
+
+        _logger.LogInformation(
+            "Message {MessageId} stored with importance score {Score:F3}",
+            message.Id,
+            message.Metadata.ImportanceScore);
 
         // Return response
         return new MessageResponse

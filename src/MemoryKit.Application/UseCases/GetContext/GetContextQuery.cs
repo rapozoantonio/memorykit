@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using MediatR;
+using MemoryKit.Domain.Interfaces;
 
 namespace MemoryKit.Application.UseCases.GetContext;
 
@@ -36,11 +38,15 @@ public record GetContextResponse
 /// </summary>
 public class GetContextHandler : IRequestHandler<GetContextQuery, GetContextResponse>
 {
+    private readonly IMemoryOrchestrator _orchestrator;
     private readonly ILogger<GetContextHandler> _logger;
 
-    public GetContextHandler(ILogger<GetContextHandler> logger)
+    public GetContextHandler(
+        IMemoryOrchestrator orchestrator,
+        ILogger<GetContextHandler> logger)
     {
-        _logger = logger;
+        _orchestrator = orchestrator ?? throw new ArgumentNullException(nameof(orchestrator));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     public async Task<GetContextResponse> Handle(
@@ -52,10 +58,30 @@ public class GetContextHandler : IRequestHandler<GetContextQuery, GetContextResp
             request.UserId,
             request.ConversationId);
 
-        // TODO: Retrieve context from IMemoryOrchestrator
-        // TODO: Format context
-        // TODO: Calculate tokens
+        var stopwatch = Stopwatch.StartNew();
 
-        throw new NotImplementedException("GetContextHandler not yet implemented");
+        // Retrieve context from orchestrator
+        var context = await _orchestrator.RetrieveContextAsync(
+            request.UserId,
+            request.ConversationId,
+            request.Query,
+            cancellationToken);
+
+        stopwatch.Stop();
+
+        // Format context as string
+        var formattedContext = context.ToPromptContext();
+
+        _logger.LogInformation(
+            "Context retrieved in {ElapsedMs}ms: {TokenCount} tokens",
+            stopwatch.ElapsedMilliseconds,
+            context.TotalTokens);
+
+        return new GetContextResponse
+        {
+            Context = formattedContext,
+            TotalTokens = context.TotalTokens,
+            RetrievalLatencyMs = stopwatch.ElapsedMilliseconds
+        };
     }
 }
