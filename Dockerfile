@@ -35,7 +35,7 @@ RUN dotnet publish src/MemoryKit.API/MemoryKit.API.csproj \
 # =============================================================================
 # Stage 2: Runtime
 # =============================================================================
-FROM mcr.microsoft.com/dotnet/aspnet:9.0-alpine AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS runtime
 
 # Install required packages for production
 RUN apk add --no-cache \
