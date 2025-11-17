@@ -1,64 +1,102 @@
-using System.Collections.Concurrent;
 using MemoryKit.Domain.Entities;
-using MemoryKit.Domain.Enums;
 using MemoryKit.Infrastructure.Azure;
+using Microsoft.Extensions.Logging;
 
 namespace MemoryKit.Infrastructure.InMemory;
 
 /// <summary>
-/// In-memory implementation of Working Memory Service for testing and MVP.
-/// Simulates Redis with sub-5ms retrieval.
+/// In-memory Working Memory Service implementation for MVP/testing.
+/// Implements Layer 3 (L3) - Hot context for active conversations.
 /// </summary>
 public class InMemoryWorkingMemoryService : IWorkingMemoryService
 {
-    private readonly ConcurrentDictionary<string, Queue<Message>> _storage = new();
+    private readonly Dictionary<string, List<Message>> _storage = new();
+    private readonly object _lock = new();
     private const int MaxItems = 10;
+    private readonly ILogger<InMemoryWorkingMemoryService> _logger;
 
-    public Task AddAsync(
+    public InMemoryWorkingMemoryService(ILogger<InMemoryWorkingMemoryService> logger)
+    {
+        _logger = logger;
+    }
+
+    public async Task AddAsync(
         string userId,
         string conversationId,
         Message message,
         CancellationToken cancellationToken = default)
     {
-        var key = GetKey(userId, conversationId);
+        await Task.Delay(1, cancellationToken); // Simulate async
 
-        var queue = _storage.GetOrAdd(key, _ => new Queue<Message>());
-
-        lock (queue)
+        lock (_lock)
         {
-            queue.Enqueue(message);
-            while (queue.Count > MaxItems)
-                queue.Dequeue();
-        }
+            var key = GetKey(userId, conversationId);
 
-        return Task.CompletedTask;
+            if (!_storage.ContainsKey(key))
+            {
+                _storage[key] = new List<Message>();
+            }
+
+            _storage[key].Add(message);
+
+            // Keep only most recent/important items
+            if (_storage[key].Count > MaxItems)
+            {
+                // Remove least important oldest message
+                var toRemove = _storage[key]
+                    .OrderBy(m => m.Metadata.ImportanceScore)
+                    .ThenBy(m => m.Timestamp)
+                    .First();
+
+                _storage[key].Remove(toRemove);
+            }
+
+            _logger.LogDebug(
+                "Added message to working memory: {ConversationId}, Total: {Count}",
+                conversationId,
+                _storage[key].Count);
+        }
     }
 
-    public Task<Message[]> GetRecentAsync(
+    public async Task<Message[]> GetRecentAsync(
         string userId,
         string conversationId,
         int count = 10,
         CancellationToken cancellationToken = default)
     {
-        var key = GetKey(userId, conversationId);
+        await Task.Delay(1, cancellationToken);
 
-        if (!_storage.TryGetValue(key, out var queue))
-            return Task.FromResult(Array.Empty<Message>());
-
-        lock (queue)
+        lock (_lock)
         {
-            return Task.FromResult(queue.TakeLast(count).ToArray());
+            var key = GetKey(userId, conversationId);
+
+            if (!_storage.ContainsKey(key))
+            {
+                return Array.Empty<Message>();
+            }
+
+            return _storage[key]
+                .OrderByDescending(m => m.Timestamp)
+                .Take(count)
+                .OrderBy(m => m.Timestamp)
+                .ToArray();
         }
     }
 
-    public Task ClearAsync(
+    public async Task ClearAsync(
         string userId,
         string conversationId,
         CancellationToken cancellationToken = default)
     {
-        var key = GetKey(userId, conversationId);
-        _storage.TryRemove(key, out _);
-        return Task.CompletedTask;
+        await Task.Delay(1, cancellationToken);
+
+        lock (_lock)
+        {
+            var key = GetKey(userId, conversationId);
+            _storage.Remove(key);
+
+            _logger.LogDebug("Cleared working memory for conversation: {ConversationId}", conversationId);
+        }
     }
 
     private static string GetKey(string userId, string conversationId)
@@ -66,68 +104,89 @@ public class InMemoryWorkingMemoryService : IWorkingMemoryService
 }
 
 /// <summary>
-/// In-memory implementation of Scratchpad Service for testing and MVP.
-/// Simulates Azure Table Storage with semantic search.
+/// In-memory Scratchpad Service implementation for MVP/testing.
+/// Implements Layer 2 (L2) - Semantic memory with extracted facts.
 /// </summary>
 public class InMemoryScratchpadService : IScratchpadService
 {
-    private readonly ConcurrentDictionary<string, List<ExtractedFact>> _facts = new();
+    private readonly Dictionary<string, List<ExtractedFact>> _storage = new();
     private readonly object _lock = new();
+    private readonly ILogger<InMemoryScratchpadService> _logger;
 
-    public Task StoreFactsAsync(
+    public InMemoryScratchpadService(ILogger<InMemoryScratchpadService> logger)
+    {
+        _logger = logger;
+    }
+
+    public async Task StoreFactsAsync(
         string userId,
         string conversationId,
         ExtractedFact[] facts,
         CancellationToken cancellationToken = default)
     {
-        var key = userId;
-        var factList = _facts.GetOrAdd(key, _ => new List<ExtractedFact>());
+        await Task.Delay(1, cancellationToken);
 
         lock (_lock)
         {
-            factList.AddRange(facts);
-        }
+            if (!_storage.ContainsKey(userId))
+            {
+                _storage[userId] = new List<ExtractedFact>();
+            }
 
-        return Task.CompletedTask;
+            _storage[userId].AddRange(facts);
+
+            _logger.LogDebug(
+                "Stored {Count} facts for user {UserId}",
+                facts.Length,
+                userId);
+        }
     }
 
-    public Task<ExtractedFact[]> SearchFactsAsync(
+    public async Task<ExtractedFact[]> SearchFactsAsync(
         string userId,
         string query,
         int maxResults = 20,
         CancellationToken cancellationToken = default)
     {
-        if (!_facts.TryGetValue(userId, out var factList))
-            return Task.FromResult(Array.Empty<ExtractedFact>());
+        await Task.Delay(1, cancellationToken);
 
         lock (_lock)
         {
-            // Simple keyword matching for MVP
-            var results = factList
+            if (!_storage.ContainsKey(userId))
+            {
+                return Array.Empty<ExtractedFact>();
+            }
+
+            var queryLower = query.ToLowerInvariant();
+
+            // Simple keyword matching (in production, use vector similarity)
+            var results = _storage[userId]
                 .Where(f =>
-                    f.Key.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                    f.Value.Contains(query, StringComparison.OrdinalIgnoreCase))
+                    f.Key.Contains(queryLower, StringComparison.OrdinalIgnoreCase) ||
+                    f.Value.Contains(queryLower, StringComparison.OrdinalIgnoreCase))
                 .OrderByDescending(f => f.Importance)
+                .ThenByDescending(f => f.LastAccessed)
                 .Take(maxResults)
                 .ToArray();
 
-            // Record access
-            foreach (var fact in results)
-            {
-                fact.RecordAccess();
-            }
+            _logger.LogDebug(
+                "Found {Count} facts for query: {Query}",
+                results.Length,
+                query);
 
-            return Task.FromResult(results);
+            return results;
         }
     }
 
-    public Task RecordAccessAsync(string factId, CancellationToken cancellationToken = default)
+    public async Task RecordAccessAsync(string factId, CancellationToken cancellationToken = default)
     {
+        await Task.Delay(1, cancellationToken);
+
         lock (_lock)
         {
-            foreach (var factList in _facts.Values)
+            foreach (var userFacts in _storage.Values)
             {
-                var fact = factList.FirstOrDefault(f => f.Id == factId);
+                var fact = userFacts.FirstOrDefault(f => f.Id == factId);
                 if (fact != null)
                 {
                     fact.RecordAccess();
@@ -135,204 +194,280 @@ public class InMemoryScratchpadService : IScratchpadService
                 }
             }
         }
-
-        return Task.CompletedTask;
     }
 
-    public Task PruneAsync(string userId, CancellationToken cancellationToken = default)
+    public async Task PruneAsync(string userId, CancellationToken cancellationToken = default)
     {
-        if (!_facts.TryGetValue(userId, out var factList))
-            return Task.CompletedTask;
+        await Task.Delay(1, cancellationToken);
 
         lock (_lock)
         {
-            // Remove facts that haven't been accessed in 30 days and have low access count
-            var ttl = TimeSpan.FromDays(30);
-            factList.RemoveAll(f => f.ShouldEvict(ttl, minAccessCount: 3));
-        }
+            if (!_storage.ContainsKey(userId))
+            {
+                return;
+            }
 
-        return Task.CompletedTask;
+            var ttl = TimeSpan.FromDays(30);
+            var minAccessCount = 2;
+
+            var beforeCount = _storage[userId].Count;
+
+            _storage[userId].RemoveAll(f => f.ShouldEvict(ttl, minAccessCount));
+
+            var afterCount = _storage[userId].Count;
+
+            _logger.LogInformation(
+                "Pruned {Count} facts for user {UserId}",
+                beforeCount - afterCount,
+                userId);
+        }
     }
 }
 
 /// <summary>
-/// In-memory implementation of Episodic Memory Service for testing and MVP.
-/// Simulates Azure Blob Storage and AI Search.
+/// In-memory Episodic Memory Service implementation for MVP/testing.
+/// Implements Layer 1 (L1) - Full conversation archive.
 /// </summary>
 public class InMemoryEpisodicMemoryService : IEpisodicMemoryService
 {
-    private readonly ConcurrentDictionary<string, Message> _archive = new();
-    private readonly ConcurrentDictionary<string, List<string>> _userIndex = new();
+    private readonly Dictionary<string, Message> _messagesById = new();
+    private readonly Dictionary<string, List<Message>> _messagesByUser = new();
     private readonly object _lock = new();
+    private readonly ILogger<InMemoryEpisodicMemoryService> _logger;
 
-    public Task ArchiveAsync(
+    public InMemoryEpisodicMemoryService(ILogger<InMemoryEpisodicMemoryService> logger)
+    {
+        _logger = logger;
+    }
+
+    public async Task ArchiveAsync(
         Message message,
         CancellationToken cancellationToken = default)
     {
-        _archive[message.Id] = message;
+        await Task.Delay(1, cancellationToken);
 
-        var userMessages = _userIndex.GetOrAdd(message.UserId, _ => new List<string>());
         lock (_lock)
         {
-            userMessages.Add(message.Id);
-        }
+            _messagesById[message.Id] = message;
 
-        return Task.CompletedTask;
+            if (!_messagesByUser.ContainsKey(message.UserId))
+            {
+                _messagesByUser[message.UserId] = new List<Message>();
+            }
+
+            _messagesByUser[message.UserId].Add(message);
+
+            _logger.LogDebug(
+                "Archived message {MessageId} for user {UserId}",
+                message.Id,
+                message.UserId);
+        }
     }
 
-    public Task<Message[]> SearchAsync(
+    public async Task<Message[]> SearchAsync(
         string userId,
         string query,
         int maxResults = 5,
         CancellationToken cancellationToken = default)
     {
-        if (!_userIndex.TryGetValue(userId, out var messageIds))
-            return Task.FromResult(Array.Empty<Message>());
+        await Task.Delay(1, cancellationToken);
 
         lock (_lock)
         {
-            var results = messageIds
-                .Select(id => _archive.TryGetValue(id, out var msg) ? msg : null)
-                .Where(msg => msg != null)
-                .Where(msg => msg!.Content.Contains(query, StringComparison.OrdinalIgnoreCase))
-                .OrderByDescending(msg => msg!.Timestamp)
+            if (!_messagesByUser.ContainsKey(userId))
+            {
+                return Array.Empty<Message>();
+            }
+
+            var queryLower = query.ToLowerInvariant();
+
+            // Simple keyword search (in production, use vector similarity)
+            var results = _messagesByUser[userId]
+                .Where(m => m.Content.Contains(queryLower, StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(m => m.Metadata.ImportanceScore)
+                .ThenByDescending(m => m.Timestamp)
                 .Take(maxResults)
-                .Cast<Message>()
                 .ToArray();
 
-            return Task.FromResult(results);
+            _logger.LogDebug(
+                "Found {Count} archived messages for query: {Query}",
+                results.Length,
+                query);
+
+            return results;
         }
     }
 
-    public Task<Message?> GetAsync(string messageId, CancellationToken cancellationToken = default)
+    public async Task<Message?> GetAsync(string messageId, CancellationToken cancellationToken = default)
     {
-        _archive.TryGetValue(messageId, out var message);
-        return Task.FromResult(message);
+        await Task.Delay(1, cancellationToken);
+
+        lock (_lock)
+        {
+            return _messagesById.TryGetValue(messageId, out var message) ? message : null;
+        }
     }
 }
 
 /// <summary>
-/// In-memory implementation of Procedural Memory Service for testing and MVP.
-/// Stores learned patterns and routines.
+/// In-memory Procedural Memory Service implementation for MVP/testing.
+/// Implements Layer P - Learned patterns and routines.
 /// </summary>
 public class InMemoryProceduralMemoryService : IProceduralMemoryService
 {
-    private readonly ConcurrentDictionary<string, List<ProceduralPattern>> _patterns = new();
+    private readonly Dictionary<string, List<ProceduralPattern>> _patternsByUser = new();
     private readonly object _lock = new();
+    private readonly ILogger<InMemoryProceduralMemoryService> _logger;
 
-    public Task<ProceduralPattern?> MatchPatternAsync(
+    public InMemoryProceduralMemoryService(ILogger<InMemoryProceduralMemoryService> logger)
+    {
+        _logger = logger;
+    }
+
+    public async Task<ProceduralPattern?> MatchPatternAsync(
         string userId,
         string query,
         CancellationToken cancellationToken = default)
     {
-        if (!_patterns.TryGetValue(userId, out var userPatterns))
-            return Task.FromResult<ProceduralPattern?>(null);
+        await Task.Delay(1, cancellationToken);
 
         lock (_lock)
         {
+            if (!_patternsByUser.ContainsKey(userId))
+            {
+                return null;
+            }
+
             var queryLower = query.ToLowerInvariant();
 
-            foreach (var pattern in userPatterns.OrderByDescending(p => p.UsageCount))
+            // Find best matching pattern
+            ProceduralPattern? bestMatch = null;
+            double bestScore = 0;
+
+            foreach (var pattern in _patternsByUser[userId])
             {
-                foreach (var trigger in pattern.Triggers)
+                // Check keyword triggers
+                foreach (var trigger in pattern.Triggers.Where(t => t.Type == Domain.Enums.TriggerType.Keyword))
                 {
-                    if (trigger.Type == TriggerType.Keyword)
+                    if (queryLower.Contains(trigger.Pattern.ToLowerInvariant()))
                     {
-                        if (queryLower.Contains(trigger.Pattern.ToLowerInvariant()))
+                        var score = 0.8; // Simple match score
+
+                        if (score > bestScore && pattern.Matches(query, score))
                         {
-                            pattern.RecordUsage();
-                            return Task.FromResult<ProceduralPattern?>(pattern);
-                        }
-                    }
-                    else if (trigger.Type == TriggerType.Regex)
-                    {
-                        if (System.Text.RegularExpressions.Regex.IsMatch(queryLower, trigger.Pattern))
-                        {
-                            pattern.RecordUsage();
-                            return Task.FromResult<ProceduralPattern?>(pattern);
+                            bestScore = score;
+                            bestMatch = pattern;
                         }
                     }
                 }
             }
-        }
 
-        return Task.FromResult<ProceduralPattern?>(null);
+            if (bestMatch != null)
+            {
+                bestMatch.RecordUsage();
+
+                _logger.LogInformation(
+                    "Matched procedural pattern: {PatternName}",
+                    bestMatch.Name);
+            }
+
+            return bestMatch;
+        }
     }
 
-    public Task StorePatternAsync(
+    public async Task StorePatternAsync(
         ProceduralPattern pattern,
         CancellationToken cancellationToken = default)
     {
-        var userPatterns = _patterns.GetOrAdd(pattern.UserId, _ => new List<ProceduralPattern>());
+        await Task.Delay(1, cancellationToken);
 
         lock (_lock)
         {
-            // Check if pattern already exists
-            var existing = userPatterns.FirstOrDefault(p => p.Name == pattern.Name);
-            if (existing != null)
+            if (!_patternsByUser.ContainsKey(pattern.UserId))
             {
-                userPatterns.Remove(existing);
+                _patternsByUser[pattern.UserId] = new List<ProceduralPattern>();
             }
 
-            userPatterns.Add(pattern);
-        }
+            _patternsByUser[pattern.UserId].Add(pattern);
 
-        return Task.CompletedTask;
+            _logger.LogDebug(
+                "Stored procedural pattern: {PatternName} for user {UserId}",
+                pattern.Name,
+                pattern.UserId);
+        }
     }
 
-    public Task DetectAndStorePatternAsync(
+    public async Task DetectAndStorePatternAsync(
         string userId,
         Message message,
         CancellationToken cancellationToken = default)
     {
-        // Simplified pattern detection for MVP
-        // In production, this would use LLM to detect procedural instructions
+        await Task.Delay(1, cancellationToken);
 
+        // Simple pattern detection (in production, use LLM)
         var content = message.Content.ToLowerInvariant();
 
-        // Detect explicit procedural instructions
-        if (content.Contains("always") || content.Contains("from now on") ||
-            content.Contains("remember to") || content.Contains("make sure to"))
+        // Detect procedural instructions like "always...", "never...", "from now on..."
+        if (content.Contains("always") || content.Contains("never") || content.Contains("from now on"))
         {
-            var pattern = ProceduralPattern.Create(
-                userId,
-                "User Preference",
-                message.Content,
-                new[]
+            var pattern = new ProceduralPattern
+            {
+                UserId = userId,
+                Name = $"Auto-detected pattern from message {message.Id[..8]}",
+                Description = message.Content.Length > 100
+                    ? message.Content[..100] + "..."
+                    : message.Content,
+                Triggers = new[]
                 {
                     new PatternTrigger
                     {
-                        Type = TriggerType.Keyword,
-                        Pattern = ExtractKeyword(content),
-                        Embedding = Array.Empty<float>()
+                        Type = Domain.Enums.TriggerType.Keyword,
+                        Pattern = ExtractKeyword(message.Content)
                     }
                 },
-                message.Content,
-                confidenceThreshold: 0.7);
+                InstructionTemplate = message.Content,
+                ConfidenceThreshold = 0.7,
+                UsageCount = 0,
+                CreatedAt = DateTime.UtcNow,
+                LastUsed = DateTime.UtcNow
+            };
 
-            return StorePatternAsync(pattern, cancellationToken);
+            await StorePatternAsync(pattern, cancellationToken);
+
+            _logger.LogInformation(
+                "Auto-detected and stored procedural pattern for user {UserId}",
+                userId);
         }
-
-        return Task.CompletedTask;
     }
 
-    public Task<ProceduralPattern[]> GetUserPatternsAsync(
+    public async Task<ProceduralPattern[]> GetUserPatternsAsync(
         string userId,
         CancellationToken cancellationToken = default)
     {
-        if (!_patterns.TryGetValue(userId, out var userPatterns))
-            return Task.FromResult(Array.Empty<ProceduralPattern>());
+        await Task.Delay(1, cancellationToken);
 
         lock (_lock)
         {
-            return Task.FromResult(userPatterns.ToArray());
+            if (!_patternsByUser.ContainsKey(userId))
+            {
+                return Array.Empty<ProceduralPattern>();
+            }
+
+            return _patternsByUser[userId]
+                .OrderByDescending(p => p.UsageCount)
+                .ToArray();
         }
     }
 
-    private static string ExtractKeyword(string content)
+    private string ExtractKeyword(string content)
     {
-        // Very simplified keyword extraction
+        // Simple keyword extraction (first significant word)
         var words = content.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        return words.FirstOrDefault(w => w.Length > 4) ?? "general";
+
+        var stopWords = new HashSet<string> { "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for" };
+
+        return words.FirstOrDefault(w =>
+            w.Length > 3 &&
+            !stopWords.Contains(w.ToLowerInvariant())) ?? "general";
     }
 }

@@ -95,6 +95,11 @@ public interface IImportanceEngine
 public record ConversationState
 {
     /// <summary>
+    /// Gets the user ID.
+    /// </summary>
+    public required string UserId { get; init; }
+
+    /// <summary>
     /// Gets the conversation ID.
     /// </summary>
     public required string ConversationId { get; init; }
@@ -105,6 +110,11 @@ public record ConversationState
     public int MessageCount { get; init; }
 
     /// <summary>
+    /// Gets the number of turns in the conversation.
+    /// </summary>
+    public int TurnCount { get; init; }
+
+    /// <summary>
     /// Gets the elapsed time since conversation started.
     /// </summary>
     public TimeSpan ElapsedTime { get; init; }
@@ -113,6 +123,11 @@ public record ConversationState
     /// Gets the number of queries in this session.
     /// </summary>
     public int QueryCount { get; init; }
+
+    /// <summary>
+    /// Gets the timestamp of the last query.
+    /// </summary>
+    public DateTime LastQueryTime { get; init; }
 
     /// <summary>
     /// Gets the average query/response time in milliseconds.

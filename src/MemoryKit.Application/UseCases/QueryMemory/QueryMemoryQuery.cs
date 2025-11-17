@@ -19,18 +19,18 @@ public record QueryMemoryQuery(
 /// </summary>
 public class QueryMemoryHandler : IRequestHandler<QueryMemoryQuery, QueryMemoryResponse>
 {
-    private readonly IMemoryOrchestrator _orchestrator;
-    private readonly ISemanticKernelService? _semanticKernel;
+    private readonly Domain.Interfaces.IMemoryOrchestrator _orchestrator;
+    private readonly Infrastructure.SemanticKernel.ISemanticKernelService _llm;
     private readonly ILogger<QueryMemoryHandler> _logger;
 
     public QueryMemoryHandler(
-        IMemoryOrchestrator orchestrator,
-        ILogger<QueryMemoryHandler> logger,
-        ISemanticKernelService? semanticKernel = null)
+        Domain.Interfaces.IMemoryOrchestrator orchestrator,
+        Infrastructure.SemanticKernel.ISemanticKernelService llm,
+        ILogger<QueryMemoryHandler> logger)
     {
-        _orchestrator = orchestrator ?? throw new ArgumentNullException(nameof(orchestrator));
-        _semanticKernel = semanticKernel;
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _orchestrator = orchestrator;
+        _llm = llm;
+        _logger = logger;
     }
 
     public async Task<QueryMemoryResponse> Handle(
@@ -43,140 +43,92 @@ public class QueryMemoryHandler : IRequestHandler<QueryMemoryQuery, QueryMemoryR
             request.ConversationId,
             request.Request.Question.Substring(0, Math.Min(50, request.Request.Question.Length)));
 
-        var stopwatch = Stopwatch.StartNew();
+        var startTime = DateTime.UtcNow;
 
-        // Retrieve context from memory orchestrator
-        var context = await _orchestrator.RetrieveContextAsync(
+        // Retrieve context from orchestrator
+        var memoryContext = await _orchestrator.RetrieveContextAsync(
             request.UserId,
             request.ConversationId,
             request.Request.Question,
             cancellationToken);
 
-        stopwatch.Stop();
+        var retrievalTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
 
-        _logger.LogInformation(
-            "Context retrieved in {ElapsedMs}ms: {WorkingMemoryCount} recent, {FactCount} facts, {ArchivedCount} archived, {TokenCount} tokens",
-            stopwatch.ElapsedMilliseconds,
-            context.WorkingMemory.Length,
-            context.Facts.Length,
-            context.ArchivedMessages.Length,
-            context.TotalTokens);
+        // Generate answer using LLM with context
+        var answer = await _llm.AnswerWithContextAsync(
+            request.Request.Question,
+            memoryContext,
+            cancellationToken);
 
-        // Generate response using AI if available, otherwise fallback to simple response
-        string answer;
-        if (_semanticKernel != null)
-        {
-            try
-            {
-                answer = await _semanticKernel.AnswerWithContextAsync(
-                    request.Request.Question,
-                    context,
-                    cancellationToken);
+        var totalTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
 
-                _logger.LogInformation("Generated AI-powered answer");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "AI response generation failed, using fallback");
-                answer = GenerateSimpleResponse(context, request.Request.Question);
-            }
-        }
-        else
-        {
-            answer = GenerateSimpleResponse(context, request.Request.Question);
-        }
-
-        // Assemble sources for transparency
+        // Assemble sources
         var sources = new List<MemorySource>();
 
-        // Add working memory sources
-        foreach (var msg in context.WorkingMemory.Take(3))
+        if (memoryContext.WorkingMemory.Length > 0)
         {
             sources.Add(new MemorySource
             {
                 Type = "WorkingMemory",
-                Content = msg.Content.Substring(0, Math.Min(100, msg.Content.Length)),
-                Timestamp = msg.Timestamp,
-                RelevanceScore = 0.9
+                Content = $"{memoryContext.WorkingMemory.Length} recent messages",
+                RelevanceScore = 1.0
             });
         }
 
-        // Add semantic memory sources
-        foreach (var fact in context.Facts.Take(3))
+        if (memoryContext.Facts.Length > 0)
         {
             sources.Add(new MemorySource
             {
                 Type = "SemanticMemory",
-                Content = $"{fact.Key}: {fact.Value}",
-                RelevanceScore = fact.Importance
+                Content = $"{memoryContext.Facts.Length} relevant facts",
+                RelevanceScore = 0.9
             });
         }
 
-        // Build response
-        var response = new QueryMemoryResponse
+        if (memoryContext.ArchivedMessages.Length > 0)
         {
-            Answer = answer,
-            Sources = sources.ToArray()
-        };
+            sources.Add(new MemorySource
+            {
+                Type = "EpisodicMemory",
+                Content = $"{memoryContext.ArchivedMessages.Length} archived messages",
+                RelevanceScore = 0.8
+            });
+        }
 
-        // Add debug info if requested
+        if (memoryContext.AppliedProcedure != null)
+        {
+            sources.Add(new MemorySource
+            {
+                Type = "ProceduralMemory",
+                Content = $"Pattern: {memoryContext.AppliedProcedure.Name}",
+                RelevanceScore = 1.0
+            });
+        }
+
+        _logger.LogInformation(
+            "Query completed: {TotalTime}ms (retrieval: {RetrievalTime}ms), {Tokens} tokens",
+            totalTime,
+            retrievalTime,
+            memoryContext.TotalTokens);
+
+        // Prepare debug info
+        DebugInfo? debugInfo = null;
         if (request.Request.IncludeDebugInfo)
         {
-            response.DebugInfo = new DebugInfo
+            debugInfo = new DebugInfo
             {
-                QueryPlan = new
-                {
-                    Type = context.QueryPlan.Type.ToString(),
-                    LayersUsed = context.QueryPlan.LayersToUse.Select(l => l.ToString()).ToArray()
-                },
-                TokensUsed = context.TotalTokens,
-                RetrievalTimeMs = stopwatch.ElapsedMilliseconds,
-                ContextSummary = new
-                {
-                    WorkingMemoryCount = context.WorkingMemory.Length,
-                    FactCount = context.Facts.Length,
-                    ArchivedCount = context.ArchivedMessages.Length,
-                    AppliedProcedure = context.AppliedProcedure?.Name
-                }
+                QueryPlanType = memoryContext.QueryPlan.Type.ToString(),
+                LayersUsed = memoryContext.QueryPlan.LayersToUse.Select(l => l.ToString()).ToArray(),
+                TokensUsed = memoryContext.TotalTokens,
+                RetrievalTimeMs = (long)retrievalTime
             };
         }
 
-        return response;
-    }
-
-    /// <summary>
-    /// Generates a simple response for MVP.
-    /// Production would use SemanticKernelService with actual LLM.
-    /// </summary>
-    private string GenerateSimpleResponse(MemoryContext context, string question)
-    {
-        var response = new System.Text.StringBuilder();
-
-        response.AppendLine($"[MVP Response - Question: {question}]");
-        response.AppendLine();
-
-        if (context.AppliedProcedure != null)
+        return new QueryMemoryResponse
         {
-            response.AppendLine($"Applied Procedure: {context.AppliedProcedure.Name}");
-            response.AppendLine($"Instruction: {context.AppliedProcedure.InstructionTemplate}");
-            response.AppendLine();
-        }
-
-        response.AppendLine($"Retrieved context from {context.QueryPlan.LayersToUse.Count} memory layer(s):");
-        response.AppendLine($"- Recent messages: {context.WorkingMemory.Length}");
-        response.AppendLine($"- Facts: {context.Facts.Length}");
-        response.AppendLine($"- Archived messages: {context.ArchivedMessages.Length}");
-        response.AppendLine();
-
-        if (context.Facts.Any())
-        {
-            response.AppendLine("Relevant Facts:");
-            foreach (var fact in context.Facts.Take(5))
-            {
-                response.AppendLine($"  • {fact.Key}: {fact.Value}");
-            }
-        }
-
-        return response.ToString();
+            Answer = answer,
+            Sources = sources.ToArray(),
+            DebugInfo = debugInfo
+        };
     }
 }

@@ -18,15 +18,18 @@ public record AddMessageCommand(
 /// </summary>
 public class AddMessageHandler : IRequestHandler<AddMessageCommand, MessageResponse>
 {
-    private readonly IMemoryOrchestrator _orchestrator;
+    private readonly Domain.Interfaces.IMemoryOrchestrator _orchestrator;
+    private readonly Infrastructure.SemanticKernel.ISemanticKernelService _llm;
     private readonly ILogger<AddMessageHandler> _logger;
 
     public AddMessageHandler(
-        IMemoryOrchestrator orchestrator,
+        Domain.Interfaces.IMemoryOrchestrator orchestrator,
+        Infrastructure.SemanticKernel.ISemanticKernelService llm,
         ILogger<AddMessageHandler> logger)
     {
-        _orchestrator = orchestrator ?? throw new ArgumentNullException(nameof(orchestrator));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _orchestrator = orchestrator;
+        _llm = llm;
+        _logger = logger;
     }
 
     public async Task<MessageResponse> Handle(
@@ -52,7 +55,21 @@ public class AddMessageHandler : IRequestHandler<AddMessageCommand, MessageRespo
         if (request.Request.Tags?.Length > 0)
             message.Metadata = message.Metadata with { Tags = request.Request.Tags };
 
-        // Store through orchestrator (handles importance scoring and entity extraction)
+        // Extract entities in background
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var entities = await _llm.ExtractEntitiesAsync(message.Content, cancellationToken);
+                message.SetExtractedEntities(entities);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to extract entities for message {MessageId}", message.Id);
+            }
+        }, cancellationToken);
+
+        // Store through orchestrator (includes importance scoring)
         await _orchestrator.StoreAsync(
             request.UserId,
             request.ConversationId,
@@ -60,7 +77,7 @@ public class AddMessageHandler : IRequestHandler<AddMessageCommand, MessageRespo
             cancellationToken);
 
         _logger.LogInformation(
-            "Message {MessageId} stored with importance score {Score:F3}",
+            "Message {MessageId} stored with importance score {Score:F2}",
             message.Id,
             message.Metadata.ImportanceScore);
 

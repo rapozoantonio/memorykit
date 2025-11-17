@@ -38,15 +38,15 @@ public record GetContextResponse
 /// </summary>
 public class GetContextHandler : IRequestHandler<GetContextQuery, GetContextResponse>
 {
-    private readonly IMemoryOrchestrator _orchestrator;
+    private readonly Domain.Interfaces.IMemoryOrchestrator _orchestrator;
     private readonly ILogger<GetContextHandler> _logger;
 
     public GetContextHandler(
-        IMemoryOrchestrator orchestrator,
+        Domain.Interfaces.IMemoryOrchestrator orchestrator,
         ILogger<GetContextHandler> logger)
     {
-        _orchestrator = orchestrator ?? throw new ArgumentNullException(nameof(orchestrator));
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _orchestrator = orchestrator;
+        _logger = logger;
     }
 
     public async Task<GetContextResponse> Handle(
@@ -58,30 +58,30 @@ public class GetContextHandler : IRequestHandler<GetContextQuery, GetContextResp
             request.UserId,
             request.ConversationId);
 
-        var stopwatch = Stopwatch.StartNew();
+        var startTime = DateTime.UtcNow;
 
         // Retrieve context from orchestrator
-        var context = await _orchestrator.RetrieveContextAsync(
+        var memoryContext = await _orchestrator.RetrieveContextAsync(
             request.UserId,
             request.ConversationId,
             request.Query,
             cancellationToken);
 
-        stopwatch.Stop();
+        var latency = (DateTime.UtcNow - startTime).TotalMilliseconds;
 
         // Format context as string
-        var formattedContext = context.ToPromptContext();
+        var formattedContext = memoryContext.ToPromptContext();
 
         _logger.LogInformation(
-            "Context retrieved in {ElapsedMs}ms: {TokenCount} tokens",
-            stopwatch.ElapsedMilliseconds,
-            context.TotalTokens);
+            "Retrieved context: {Tokens} tokens in {Latency}ms",
+            memoryContext.TotalTokens,
+            latency);
 
         return new GetContextResponse
         {
             Context = formattedContext,
-            TotalTokens = context.TotalTokens,
-            RetrievalLatencyMs = stopwatch.ElapsedMilliseconds
+            TotalTokens = memoryContext.TotalTokens,
+            RetrievalLatencyMs = (long)latency
         };
     }
 }
