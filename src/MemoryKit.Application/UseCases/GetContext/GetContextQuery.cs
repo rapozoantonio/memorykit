@@ -36,10 +36,14 @@ public record GetContextResponse
 /// </summary>
 public class GetContextHandler : IRequestHandler<GetContextQuery, GetContextResponse>
 {
+    private readonly Domain.Interfaces.IMemoryOrchestrator _orchestrator;
     private readonly ILogger<GetContextHandler> _logger;
 
-    public GetContextHandler(ILogger<GetContextHandler> logger)
+    public GetContextHandler(
+        Domain.Interfaces.IMemoryOrchestrator orchestrator,
+        ILogger<GetContextHandler> logger)
     {
+        _orchestrator = orchestrator;
         _logger = logger;
     }
 
@@ -52,10 +56,30 @@ public class GetContextHandler : IRequestHandler<GetContextQuery, GetContextResp
             request.UserId,
             request.ConversationId);
 
-        // TODO: Retrieve context from IMemoryOrchestrator
-        // TODO: Format context
-        // TODO: Calculate tokens
+        var startTime = DateTime.UtcNow;
 
-        throw new NotImplementedException("GetContextHandler not yet implemented");
+        // Retrieve context from orchestrator
+        var memoryContext = await _orchestrator.RetrieveContextAsync(
+            request.UserId,
+            request.ConversationId,
+            request.Query,
+            cancellationToken);
+
+        var latency = (DateTime.UtcNow - startTime).TotalMilliseconds;
+
+        // Format context as string
+        var formattedContext = memoryContext.ToPromptContext();
+
+        _logger.LogInformation(
+            "Retrieved context: {Tokens} tokens in {Latency}ms",
+            memoryContext.TotalTokens,
+            latency);
+
+        return new GetContextResponse
+        {
+            Context = formattedContext,
+            TotalTokens = memoryContext.TotalTokens,
+            RetrievalLatencyMs = (long)latency
+        };
     }
 }

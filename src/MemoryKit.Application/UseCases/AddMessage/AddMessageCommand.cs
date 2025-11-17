@@ -17,10 +17,17 @@ public record AddMessageCommand(
 /// </summary>
 public class AddMessageHandler : IRequestHandler<AddMessageCommand, MessageResponse>
 {
+    private readonly Domain.Interfaces.IMemoryOrchestrator _orchestrator;
+    private readonly Infrastructure.SemanticKernel.ISemanticKernelService _llm;
     private readonly ILogger<AddMessageHandler> _logger;
 
-    public AddMessageHandler(ILogger<AddMessageHandler> logger)
+    public AddMessageHandler(
+        Domain.Interfaces.IMemoryOrchestrator orchestrator,
+        Infrastructure.SemanticKernel.ISemanticKernelService llm,
+        ILogger<AddMessageHandler> logger)
     {
+        _orchestrator = orchestrator;
+        _llm = llm;
         _logger = logger;
     }
 
@@ -47,9 +54,31 @@ public class AddMessageHandler : IRequestHandler<AddMessageCommand, MessageRespo
         if (request.Request.Tags?.Length > 0)
             message.Metadata = message.Metadata with { Tags = request.Request.Tags };
 
-        // TODO: Store through IMemoryOrchestrator
-        // TODO: Apply importance scoring
-        // TODO: Extract entities
+        // Extract entities in background
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var entities = await _llm.ExtractEntitiesAsync(message.Content, cancellationToken);
+                message.SetExtractedEntities(entities);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to extract entities for message {MessageId}", message.Id);
+            }
+        }, cancellationToken);
+
+        // Store through orchestrator (includes importance scoring)
+        await _orchestrator.StoreAsync(
+            request.UserId,
+            request.ConversationId,
+            message,
+            cancellationToken);
+
+        _logger.LogInformation(
+            "Message {MessageId} stored with importance score {Score:F2}",
+            message.Id,
+            message.Metadata.ImportanceScore);
 
         // Return response
         return new MessageResponse

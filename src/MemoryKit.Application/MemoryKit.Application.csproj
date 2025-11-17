@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MemoryKit.Domain\MemoryKit.Domain.csproj" />
+    <ProjectReference Include="..\MemoryKit.Infrastructure\MemoryKit.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

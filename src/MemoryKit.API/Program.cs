@@ -1,3 +1,5 @@
+using FluentValidation.AspNetCore;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container
@@ -43,6 +45,33 @@ builder.Services.AddMediatR(config =>
     config.RegisterServicesFromAssembly(typeof(Program).Assembly);
     config.RegisterServicesFromAssemblyContaining(typeof(MemoryKit.Application.UseCases.AddMessage.AddMessageHandler));
 });
+
+// Add FluentValidation
+builder.Services.AddValidatorsFromAssemblyContaining<MemoryKit.Application.Validators.CreateMessageRequestValidator>();
+
+// Register Memory Layer Services (In-Memory implementations for MVP)
+builder.Services.AddSingleton<MemoryKit.Infrastructure.Azure.IWorkingMemoryService,
+    MemoryKit.Infrastructure.InMemory.InMemoryWorkingMemoryService>();
+builder.Services.AddSingleton<MemoryKit.Infrastructure.Azure.IScratchpadService,
+    MemoryKit.Infrastructure.InMemory.InMemoryScratchpadService>();
+builder.Services.AddSingleton<MemoryKit.Infrastructure.Azure.IEpisodicMemoryService,
+    MemoryKit.Infrastructure.InMemory.InMemoryEpisodicMemoryService>();
+builder.Services.AddSingleton<MemoryKit.Infrastructure.Azure.IProceduralMemoryService,
+    MemoryKit.Infrastructure.InMemory.InMemoryProceduralMemoryService>();
+
+// Register Cognitive Services
+builder.Services.AddSingleton<MemoryKit.Infrastructure.Cognitive.IPrefrontalController,
+    MemoryKit.Infrastructure.Cognitive.PrefrontalControllerService>();
+builder.Services.AddSingleton<MemoryKit.Infrastructure.Cognitive.IAmygdalaImportanceEngine,
+    MemoryKit.Infrastructure.Cognitive.AmygdalaImportanceEngineService>();
+
+// Register Semantic Kernel Service (Mock for MVP)
+builder.Services.AddSingleton<MemoryKit.Infrastructure.SemanticKernel.ISemanticKernelService,
+    MemoryKit.Infrastructure.SemanticKernel.MockSemanticKernelService>();
+
+// Register Memory Orchestrator
+builder.Services.AddScoped<MemoryKit.Domain.Interfaces.IMemoryOrchestrator,
+    MemoryKit.Application.Services.MemoryOrchestrator>();
 
 // Add health checks
 builder.Services.AddHealthChecks();
