@@ -1,5 +1,8 @@
+using System.Diagnostics;
 using MediatR;
 using MemoryKit.Application.DTOs;
+using MemoryKit.Domain.Interfaces;
+using MemoryKit.Infrastructure.SemanticKernel;
 
 namespace MemoryKit.Application.UseCases.QueryMemory;
 
@@ -35,9 +38,10 @@ public class QueryMemoryHandler : IRequestHandler<QueryMemoryQuery, QueryMemoryR
         CancellationToken cancellationToken)
     {
         _logger.LogInformation(
-            "Querying memory for user {UserId}, conversation {ConversationId}",
+            "Querying memory for user {UserId}, conversation {ConversationId}, query: {Query}",
             request.UserId,
-            request.ConversationId);
+            request.ConversationId,
+            request.Request.Question.Substring(0, Math.Min(50, request.Request.Question.Length)));
 
         var startTime = DateTime.UtcNow;
 

@@ -55,7 +55,9 @@ public class ProceduralPattern : Entity<string>
         string userId,
         string name,
         string description,
-        string instructionTemplate)
+        PatternTrigger[] triggers,
+        string instructionTemplate,
+        double confidenceThreshold = 0.8)
     {
         return new ProceduralPattern
         {
@@ -63,8 +65,11 @@ public class ProceduralPattern : Entity<string>
             UserId = userId,
             Name = name,
             Description = description,
+            Triggers = triggers,
             InstructionTemplate = instructionTemplate,
-            LastUsed = DateTime.UtcNow
+            ConfidenceThreshold = Math.Clamp(confidenceThreshold, 0.0, 1.0),
+            LastUsed = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow
         };
     }
 

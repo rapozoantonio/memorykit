@@ -1,6 +1,7 @@
 using MediatR;
 using MemoryKit.Application.DTOs;
 using MemoryKit.Domain.Entities;
+using MemoryKit.Domain.Interfaces;
 
 namespace MemoryKit.Application.UseCases.AddMessage;
 

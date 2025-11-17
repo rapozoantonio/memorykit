@@ -109,3 +109,40 @@ public record QueryPlan
     /// </summary>
     public bool IncludeHistoricalContext { get; init; }
 }
+
+/// <summary>
+/// Represents an extracted entity from message content.
+/// Used for populating semantic memory (scratchpad).
+/// </summary>
+public record ExtractedEntity
+{
+    /// <summary>
+    /// Gets the key or name of the entity.
+    /// </summary>
+    public required string Key { get; init; }
+
+    /// <summary>
+    /// Gets the value or content of the entity.
+    /// </summary>
+    public required string Value { get; init; }
+
+    /// <summary>
+    /// Gets the type of entity.
+    /// </summary>
+    public required EntityType Type { get; init; }
+
+    /// <summary>
+    /// Gets the importance score (0.0 to 1.0).
+    /// </summary>
+    public double Importance { get; init; }
+
+    /// <summary>
+    /// Gets a value indicating whether this is a novel entity (first time seen).
+    /// </summary>
+    public bool IsNovel { get; init; }
+
+    /// <summary>
+    /// Gets the embedding vector for semantic search.
+    /// </summary>
+    public float[] Embedding { get; init; } = Array.Empty<float>();
+}

@@ -133,6 +133,11 @@ public record ConversationState
     /// Gets the average query/response time in milliseconds.
     /// </summary>
     public double AverageResponseTimeMs { get; init; }
+
+    /// <summary>
+    /// Gets the last activity timestamp for this conversation.
+    /// </summary>
+    public DateTime LastActivity { get; init; } = DateTime.UtcNow;
 }
 
 /// <summary>
