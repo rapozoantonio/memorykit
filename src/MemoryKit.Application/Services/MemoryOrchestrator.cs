@@ -5,6 +5,7 @@ using MemoryKit.Domain.Interfaces;
 using MemoryKit.Domain.ValueObjects;
 using MemoryKit.Infrastructure.Azure;
 using MemoryKit.Infrastructure.Cognitive;
+using MemoryKit.Infrastructure.SemanticKernel;
 
 namespace MemoryKit.Application.Services;
 
@@ -20,6 +21,7 @@ public class MemoryOrchestrator : IMemoryOrchestrator
     private readonly IProceduralMemoryService _proceduralMemory;
     private readonly IPrefrontalController _prefrontal;
     private readonly IAmygdalaImportanceEngine _amygdala;
+    private readonly ISemanticKernelService? _semanticKernel;
     private readonly ILogger<MemoryOrchestrator> _logger;
 
     public MemoryOrchestrator(
@@ -29,7 +31,8 @@ public class MemoryOrchestrator : IMemoryOrchestrator
         IProceduralMemoryService proceduralMemory,
         IPrefrontalController prefrontal,
         IAmygdalaImportanceEngine amygdala,
-        ILogger<MemoryOrchestrator> logger)
+        ILogger<MemoryOrchestrator> logger,
+        ISemanticKernelService? semanticKernel = null)
     {
         _workingMemory = workingMemory ?? throw new ArgumentNullException(nameof(workingMemory));
         _scratchpad = scratchpad ?? throw new ArgumentNullException(nameof(scratchpad));
@@ -37,6 +40,7 @@ public class MemoryOrchestrator : IMemoryOrchestrator
         _proceduralMemory = proceduralMemory ?? throw new ArgumentNullException(nameof(proceduralMemory));
         _prefrontal = prefrontal ?? throw new ArgumentNullException(nameof(prefrontal));
         _amygdala = amygdala ?? throw new ArgumentNullException(nameof(amygdala));
+        _semanticKernel = semanticKernel;
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -199,8 +203,8 @@ public class MemoryOrchestrator : IMemoryOrchestrator
         {
             try
             {
-                // Extract entities for scratchpad (simplified - would use LLM in production)
-                var entities = ExtractBasicEntities(message);
+                // Extract entities for scratchpad using AI if available
+                var entities = await ExtractEntitiesAsync(message, cancellationToken);
                 if (entities.Any())
                 {
                     await _scratchpad.StoreFactsAsync(
@@ -286,8 +290,35 @@ public class MemoryOrchestrator : IMemoryOrchestrator
     }
 
     /// <summary>
-    /// Basic entity extraction (simplified).
-    /// Production version would use Azure AI or Semantic Kernel.
+    /// Extracts entities from message content.
+    /// Uses SemanticKernelService if available, otherwise falls back to basic extraction.
+    /// </summary>
+    private async Task<ExtractedEntity[]> ExtractEntitiesAsync(Message message, CancellationToken cancellationToken)
+    {
+        // Use AI-powered extraction if available
+        if (_semanticKernel != null)
+        {
+            try
+            {
+                var entities = await _semanticKernel.ExtractEntitiesAsync(
+                    message.Content,
+                    cancellationToken);
+
+                _logger.LogDebug("Extracted {Count} entities using AI", entities.Length);
+                return entities;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "AI entity extraction failed, using fallback");
+            }
+        }
+
+        // Fallback to basic extraction
+        return ExtractBasicEntities(message);
+    }
+
+    /// <summary>
+    /// Basic entity extraction (fallback when AI is not available).
     /// </summary>
     private ExtractedEntity[] ExtractBasicEntities(Message message)
     {

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using MediatR;
 using MemoryKit.Application.DTOs;
 using MemoryKit.Domain.Interfaces;
+using MemoryKit.Infrastructure.SemanticKernel;
 
 namespace MemoryKit.Application.UseCases.QueryMemory;
 
@@ -19,13 +20,16 @@ public record QueryMemoryQuery(
 public class QueryMemoryHandler : IRequestHandler<QueryMemoryQuery, QueryMemoryResponse>
 {
     private readonly IMemoryOrchestrator _orchestrator;
+    private readonly ISemanticKernelService? _semanticKernel;
     private readonly ILogger<QueryMemoryHandler> _logger;
 
     public QueryMemoryHandler(
         IMemoryOrchestrator orchestrator,
-        ILogger<QueryMemoryHandler> logger)
+        ILogger<QueryMemoryHandler> logger,
+        ISemanticKernelService? semanticKernel = null)
     {
         _orchestrator = orchestrator ?? throw new ArgumentNullException(nameof(orchestrator));
+        _semanticKernel = semanticKernel;
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -58,9 +62,29 @@ public class QueryMemoryHandler : IRequestHandler<QueryMemoryQuery, QueryMemoryR
             context.ArchivedMessages.Length,
             context.TotalTokens);
 
-        // For MVP, generate a simple response based on context
-        // In production, this would call SemanticKernelService to generate LLM response
-        var answer = GenerateSimpleResponse(context, request.Request.Question);
+        // Generate response using AI if available, otherwise fallback to simple response
+        string answer;
+        if (_semanticKernel != null)
+        {
+            try
+            {
+                answer = await _semanticKernel.AnswerWithContextAsync(
+                    request.Request.Question,
+                    context,
+                    cancellationToken);
+
+                _logger.LogInformation("Generated AI-powered answer");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "AI response generation failed, using fallback");
+                answer = GenerateSimpleResponse(context, request.Request.Question);
+            }
+        }
+        else
+        {
+            answer = GenerateSimpleResponse(context, request.Request.Question);
+        }
 
         // Assemble sources for transparency
         var sources = new List<MemorySource>();

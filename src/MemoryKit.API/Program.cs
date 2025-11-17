@@ -47,6 +47,14 @@ builder.Services.AddMediatR(config =>
 // Add health checks
 builder.Services.AddHealthChecks();
 
+// Register AI Services (Optional - graceful degradation if not configured)
+builder.Services.AddSingleton<MemoryKit.Infrastructure.SemanticKernel.ISemanticKernelService>(sp =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+    var logger = sp.GetRequiredService<ILogger<MemoryKit.Infrastructure.SemanticKernel.SemanticKernelService>>();
+    return new MemoryKit.Infrastructure.SemanticKernel.SemanticKernelService(config, logger);
+});
+
 // Register Memory Services (In-Memory implementations for MVP)
 builder.Services.AddSingleton<MemoryKit.Infrastructure.Azure.IWorkingMemoryService, MemoryKit.Infrastructure.InMemory.InMemoryWorkingMemoryService>();
 builder.Services.AddSingleton<MemoryKit.Infrastructure.Azure.IScratchpadService, MemoryKit.Infrastructure.InMemory.InMemoryScratchpadService>();
@@ -57,8 +65,21 @@ builder.Services.AddSingleton<MemoryKit.Infrastructure.Azure.IProceduralMemorySe
 builder.Services.AddSingleton<MemoryKit.Infrastructure.Cognitive.IPrefrontalController, MemoryKit.Application.Services.PrefrontalController>();
 builder.Services.AddSingleton<MemoryKit.Infrastructure.Cognitive.IAmygdalaImportanceEngine, MemoryKit.Application.Services.AmygdalaImportanceEngine>();
 
-// Register Orchestrator
-builder.Services.AddSingleton<MemoryKit.Domain.Interfaces.IMemoryOrchestrator, MemoryKit.Application.Services.MemoryOrchestrator>();
+// Register Orchestrator (now receives ISemanticKernelService)
+builder.Services.AddSingleton<MemoryKit.Domain.Interfaces.IMemoryOrchestrator>(sp =>
+{
+    var workingMemory = sp.GetRequiredService<MemoryKit.Infrastructure.Azure.IWorkingMemoryService>();
+    var scratchpad = sp.GetRequiredService<MemoryKit.Infrastructure.Azure.IScratchpadService>();
+    var episodic = sp.GetRequiredService<MemoryKit.Infrastructure.Azure.IEpisodicMemoryService>();
+    var procedural = sp.GetRequiredService<MemoryKit.Infrastructure.Azure.IProceduralMemoryService>();
+    var prefrontal = sp.GetRequiredService<MemoryKit.Infrastructure.Cognitive.IPrefrontalController>();
+    var amygdala = sp.GetRequiredService<MemoryKit.Infrastructure.Cognitive.IAmygdalaImportanceEngine>();
+    var logger = sp.GetRequiredService<ILogger<MemoryKit.Application.Services.MemoryOrchestrator>>();
+    var semanticKernel = sp.GetService<MemoryKit.Infrastructure.SemanticKernel.ISemanticKernelService>();
+
+    return new MemoryKit.Application.Services.MemoryOrchestrator(
+        workingMemory, scratchpad, episodic, procedural, prefrontal, amygdala, logger, semanticKernel);
+});
 
 // Build the app
 var app = builder.Build();
