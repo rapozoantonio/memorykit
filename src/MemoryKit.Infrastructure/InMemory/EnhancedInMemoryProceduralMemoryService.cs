@@ -36,12 +36,28 @@ public class EnhancedInMemoryProceduralMemoryService : IProceduralMemoryService
         _logger.LogDebug("Matching query against {Count} patterns for user {UserId}",
             userPatterns.Count, userId);
 
+        // Pre-compute query embedding outside of lock to avoid blocking
+        float[]? queryEmbedding = null;
+        bool hasSemanticTriggers = userPatterns.Any(p => p.Triggers.Any(t => t.Type == TriggerType.Semantic && t.Embedding?.Length > 0));
+
+        if (hasSemanticTriggers && _semanticKernel != null)
+        {
+            try
+            {
+                queryEmbedding = await _semanticKernel.GetEmbeddingAsync(query, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to get query embedding, will use fallback matching");
+            }
+        }
+
+        var queryLower = query.ToLowerInvariant();
+        ProceduralPattern? bestMatch = null;
+        double bestScore = 0;
+
         lock (_lock)
         {
-            var queryLower = query.ToLowerInvariant();
-            ProceduralPattern? bestMatch = null;
-            double bestScore = 0;
-
             foreach (var pattern in userPatterns.OrderByDescending(p => p.UsageCount))
             {
                 foreach (var trigger in pattern.Triggers)
@@ -65,22 +81,10 @@ public class EnhancedInMemoryProceduralMemoryService : IProceduralMemoryService
                             break;
 
                         case TriggerType.Semantic:
-                            // Use embedding similarity if available
-                            if (_semanticKernel != null && trigger.Embedding?.Length > 0)
+                            // Use pre-computed embedding if available
+                            if (queryEmbedding != null && trigger.Embedding?.Length > 0)
                             {
-                                try
-                                {
-                                    var queryEmbedding = _semanticKernel.GetEmbeddingAsync(query, cancellationToken).Result;
-                                    score = CalculateCosineSimilarity(queryEmbedding, trigger.Embedding);
-                                }
-                                catch
-                                {
-                                    // Fallback to keyword matching
-                                    if (queryLower.Contains(trigger.Pattern.ToLowerInvariant()))
-                                    {
-                                        score = 0.7;
-                                    }
-                                }
+                                score = CalculateCosineSimilarity(queryEmbedding, trigger.Embedding);
                             }
                             else
                             {
@@ -205,6 +209,28 @@ public class EnhancedInMemoryProceduralMemoryService : IProceduralMemoryService
                 .ThenByDescending(p => p.LastUsed)
                 .ToArray());
         }
+    }
+
+    public Task DeleteUserDataAsync(
+        string userId,
+        CancellationToken cancellationToken = default)
+    {
+        lock (_lock)
+        {
+            if (_patterns.TryRemove(userId, out var userPatterns))
+            {
+                _logger.LogInformation(
+                    "Deleted all procedural memory data for user {UserId}: {Count} patterns removed",
+                    userId,
+                    userPatterns.Count);
+            }
+            else
+            {
+                _logger.LogDebug("No procedural memory data found for user {UserId}", userId);
+            }
+        }
+
+        return Task.CompletedTask;
     }
 
     /// <summary>

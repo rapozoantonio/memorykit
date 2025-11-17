@@ -197,29 +197,45 @@ public class MemoryOrchestrator : IMemoryOrchestrator
 
         await Task.WhenAll(storageTasks);
 
-        // Step 3: Background processing (fire-and-forget with error handling)
+        // Step 3: Background processing with improved error handling
+        // Note: Using Task.Run for background processing. In production, consider using
+        // a background job queue (Hangfire, Quartz.NET) or IHostedService for better reliability.
         _ = Task.Run(async () =>
         {
             try
             {
+                // Use a separate CancellationTokenSource to avoid using an already-canceled token
+                using var bgCts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+
                 // Detect and store procedural patterns
                 await _proceduralMemory.DetectAndStorePatternAsync(
                     userId,
                     message,
-                    cancellationToken);
+                    bgCts.Token);
 
                 _logger.LogDebug(
                     "Background pattern detection completed for message {MessageId}",
+                    message.Id);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning(
+                    "Background pattern detection timed out for message {MessageId}",
                     message.Id);
             }
             catch (Exception ex)
             {
                 _logger.LogError(
                     ex,
-                    "Background processing failed for message {MessageId}",
+                    "Background pattern detection failed for message {MessageId}. Pattern learning may be incomplete.",
                     message.Id);
+
+                // In production, this should:
+                // 1. Increment a failure metric for monitoring
+                // 2. Optionally retry with exponential backoff
+                // 3. Dead-letter queue for manual intervention if critical
             }
-        }, cancellationToken);
+        }, CancellationToken.None); // Use None to ensure task isn't immediately canceled
     }
 
     public Task<QueryPlan> BuildQueryPlanAsync(

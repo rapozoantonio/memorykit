@@ -56,6 +56,7 @@ public class ExtractedFact : Entity<string>
     /// <summary>
     /// Factory method to create a new fact.
     /// </summary>
+    /// <exception cref="ArgumentException">Thrown when userId, conversationId, key, or value is null or whitespace.</exception>
     public static ExtractedFact Create(
         string userId,
         string conversationId,
@@ -64,6 +65,18 @@ public class ExtractedFact : Entity<string>
         EntityType type,
         double importance = 0.5)
     {
+        if (string.IsNullOrWhiteSpace(userId))
+            throw new ArgumentException("User ID cannot be null or whitespace", nameof(userId));
+
+        if (string.IsNullOrWhiteSpace(conversationId))
+            throw new ArgumentException("Conversation ID cannot be null or whitespace", nameof(conversationId));
+
+        if (string.IsNullOrWhiteSpace(key))
+            throw new ArgumentException("Key cannot be null or whitespace", nameof(key));
+
+        if (string.IsNullOrWhiteSpace(value))
+            throw new ArgumentException("Value cannot be null or whitespace", nameof(value));
+
         return new ExtractedFact
         {
             Id = Guid.NewGuid().ToString(),

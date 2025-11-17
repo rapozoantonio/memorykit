@@ -41,12 +41,22 @@ public class Message : Entity<string>
     /// <summary>
     /// Factory method to create a new message.
     /// </summary>
+    /// <exception cref="ArgumentException">Thrown when userId, conversationId, or content is null or whitespace.</exception>
     public static Message Create(
         string userId,
         string conversationId,
         MessageRole role,
         string content)
     {
+        if (string.IsNullOrWhiteSpace(userId))
+            throw new ArgumentException("User ID cannot be null or whitespace", nameof(userId));
+
+        if (string.IsNullOrWhiteSpace(conversationId))
+            throw new ArgumentException("Conversation ID cannot be null or whitespace", nameof(conversationId));
+
+        if (string.IsNullOrWhiteSpace(content))
+            throw new ArgumentException("Content cannot be null or whitespace", nameof(content));
+
         var message = new Message
         {
             Id = Guid.NewGuid().ToString(),

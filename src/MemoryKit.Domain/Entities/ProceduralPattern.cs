@@ -8,6 +8,8 @@ namespace MemoryKit.Domain.Entities;
 /// </summary>
 public class ProceduralPattern : Entity<string>
 {
+    private readonly object _recordUsageLock = new object();
+
     /// <summary>
     /// Gets the user ID who owns this pattern.
     /// </summary>
@@ -51,6 +53,8 @@ public class ProceduralPattern : Entity<string>
     /// <summary>
     /// Factory method to create a new procedural pattern.
     /// </summary>
+    /// <exception cref="ArgumentException">Thrown when userId, name, description, or instructionTemplate is null or whitespace.</exception>
+    /// <exception cref="ArgumentNullException">Thrown when triggers is null.</exception>
     public static ProceduralPattern Create(
         string userId,
         string name,
@@ -59,6 +63,21 @@ public class ProceduralPattern : Entity<string>
         string instructionTemplate,
         double confidenceThreshold = 0.8)
     {
+        if (string.IsNullOrWhiteSpace(userId))
+            throw new ArgumentException("User ID cannot be null or whitespace", nameof(userId));
+
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Name cannot be null or whitespace", nameof(name));
+
+        if (string.IsNullOrWhiteSpace(description))
+            throw new ArgumentException("Description cannot be null or whitespace", nameof(description));
+
+        if (triggers == null || triggers.Length == 0)
+            throw new ArgumentException("Triggers cannot be null or empty", nameof(triggers));
+
+        if (string.IsNullOrWhiteSpace(instructionTemplate))
+            throw new ArgumentException("Instruction template cannot be null or whitespace", nameof(instructionTemplate));
+
         return new ProceduralPattern
         {
             Id = Guid.NewGuid().ToString(),
@@ -83,17 +102,21 @@ public class ProceduralPattern : Entity<string>
 
     /// <summary>
     /// Records a usage of this pattern and applies reinforcement learning adjustments.
+    /// Thread-safe implementation using lock for state modifications.
     /// </summary>
     public void RecordUsage()
     {
-        UsageCount++;
-        LastUsed = DateTime.UtcNow;
-
-        // Reinforcement learning: decrease confidence threshold with repeated successful usage
-        if (UsageCount > 10 && ConfidenceThreshold > 0.7)
+        lock (_recordUsageLock)
         {
-            ConfidenceThreshold = Math.Max(0.6, ConfidenceThreshold - 0.05);
-            UpdatedAt = DateTime.UtcNow;
+            UsageCount++;
+            LastUsed = DateTime.UtcNow;
+
+            // Reinforcement learning: decrease confidence threshold with repeated successful usage
+            if (UsageCount > 10 && ConfidenceThreshold > 0.7)
+            {
+                ConfidenceThreshold = Math.Max(0.6, ConfidenceThreshold - 0.05);
+                UpdatedAt = DateTime.UtcNow;
+            }
         }
     }
 

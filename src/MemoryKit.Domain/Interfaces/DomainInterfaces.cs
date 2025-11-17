@@ -265,6 +265,13 @@ public interface IWorkingMemoryService
         string userId,
         string conversationId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes all working memory data for a user (GDPR compliance).
+    /// </summary>
+    Task DeleteUserDataAsync(
+        string userId,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -300,6 +307,13 @@ public interface IScratchpadService
     /// Prunes expired or unused facts.
     /// </summary>
     Task PruneAsync(string userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes all semantic memory data for a user (GDPR compliance).
+    /// </summary>
+    Task DeleteUserDataAsync(
+        string userId,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -328,6 +342,13 @@ public interface IEpisodicMemoryService
     /// Retrieves a specific archived message.
     /// </summary>
     Task<Message?> GetAsync(string messageId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes all episodic memory data for a user (GDPR compliance).
+    /// </summary>
+    Task DeleteUserDataAsync(
+        string userId,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -363,6 +384,13 @@ public interface IProceduralMemoryService
     /// Retrieves a user's patterns.
     /// </summary>
     Task<ProceduralPattern[]> GetUserPatternsAsync(
+        string userId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes all procedural memory data for a user (GDPR compliance).
+    /// </summary>
+    Task DeleteUserDataAsync(
         string userId,
         CancellationToken cancellationToken = default);
 }

@@ -72,7 +72,9 @@ public record EmbeddingVector
         var magnitudeA = Math.Sqrt(Vector.Sum(x => x * x));
         var magnitudeB = Math.Sqrt(other.Sum(x => x * x));
 
-        if (magnitudeA == 0 || magnitudeB == 0)
+        // Use epsilon for floating-point comparison to avoid division by near-zero values
+        const double epsilon = 1e-10;
+        if (magnitudeA < epsilon || magnitudeB < epsilon)
             return 0.0;
 
         return dotProduct / (magnitudeA * magnitudeB);

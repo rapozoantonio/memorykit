@@ -99,6 +99,30 @@ public class InMemoryWorkingMemoryService : IWorkingMemoryService
         }
     }
 
+    public async Task DeleteUserDataAsync(
+        string userId,
+        CancellationToken cancellationToken = default)
+    {
+        await Task.Delay(1, cancellationToken);
+
+        lock (_lock)
+        {
+            var keysToRemove = _storage.Keys
+                .Where(k => k.StartsWith($"{userId}:"))
+                .ToList();
+
+            foreach (var key in keysToRemove)
+            {
+                _storage.Remove(key);
+            }
+
+            _logger.LogInformation(
+                "Deleted all working memory data for user {UserId}: {Count} conversations removed",
+                userId,
+                keysToRemove.Count);
+        }
+    }
+
     private static string GetKey(string userId, string conversationId)
         => $"{userId}:{conversationId}";
 }
@@ -222,6 +246,31 @@ public class InMemoryScratchpadService : IScratchpadService
                 userId);
         }
     }
+
+    public async Task DeleteUserDataAsync(
+        string userId,
+        CancellationToken cancellationToken = default)
+    {
+        await Task.Delay(1, cancellationToken);
+
+        lock (_lock)
+        {
+            if (_storage.ContainsKey(userId))
+            {
+                var count = _storage[userId].Count;
+                _storage.Remove(userId);
+
+                _logger.LogInformation(
+                    "Deleted all semantic memory data for user {UserId}: {Count} facts removed",
+                    userId,
+                    count);
+            }
+            else
+            {
+                _logger.LogDebug("No semantic memory data found for user {UserId}", userId);
+            }
+        }
+    }
 }
 
 /// <summary>
@@ -305,6 +354,37 @@ public class InMemoryEpisodicMemoryService : IEpisodicMemoryService
         lock (_lock)
         {
             return _messagesById.TryGetValue(messageId, out var message) ? message : null;
+        }
+    }
+
+    public async Task DeleteUserDataAsync(
+        string userId,
+        CancellationToken cancellationToken = default)
+    {
+        await Task.Delay(1, cancellationToken);
+
+        lock (_lock)
+        {
+            // Find all message IDs for this user
+            var messageIdsToRemove = _messagesByUser.ContainsKey(userId)
+                ? _messagesByUser[userId].Select(m => m.Id).ToList()
+                : new List<string>();
+
+            // Remove from both dictionaries
+            if (_messagesByUser.ContainsKey(userId))
+            {
+                _messagesByUser.Remove(userId);
+            }
+
+            foreach (var messageId in messageIdsToRemove)
+            {
+                _messagesById.Remove(messageId);
+            }
+
+            _logger.LogInformation(
+                "Deleted all episodic memory data for user {UserId}: {Count} messages removed",
+                userId,
+                messageIdsToRemove.Count);
         }
     }
 }
