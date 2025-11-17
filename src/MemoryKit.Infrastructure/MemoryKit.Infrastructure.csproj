@@ -22,7 +22,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MemoryKit.Domain\MemoryKit.Domain.csproj" />
-    <ProjectReference Include="..\MemoryKit.Application\MemoryKit.Application.csproj" />
   </ItemGroup>
 
 </Project>

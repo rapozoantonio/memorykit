@@ -2,8 +2,7 @@ using System.Collections.Concurrent;
 using System.Text.Json;
 using MemoryKit.Domain.Entities;
 using MemoryKit.Domain.Enums;
-using MemoryKit.Infrastructure.Azure;
-using MemoryKit.Infrastructure.SemanticKernel;
+using MemoryKit.Domain.Interfaces;
 
 namespace MemoryKit.Infrastructure.InMemory;
 

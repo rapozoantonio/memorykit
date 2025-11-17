@@ -2,8 +2,6 @@ using MemoryKit.Domain.Entities;
 using MemoryKit.Domain.Enums;
 using MemoryKit.Domain.Interfaces;
 using MemoryKit.Domain.ValueObjects;
-using MemoryKit.Infrastructure.Azure;
-using MemoryKit.Infrastructure.Cognitive;
 using Microsoft.Extensions.Logging;
 
 namespace MemoryKit.Application.Services;

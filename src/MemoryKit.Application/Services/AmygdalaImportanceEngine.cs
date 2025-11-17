@@ -1,6 +1,6 @@
 using MemoryKit.Domain.Entities;
+using MemoryKit.Domain.Interfaces;
 using MemoryKit.Domain.ValueObjects;
-using MemoryKit.Infrastructure.Cognitive;
 
 namespace MemoryKit.Application.Services;
 

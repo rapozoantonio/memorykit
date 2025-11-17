@@ -1,54 +1,19 @@
-using MemoryKit.Domain.Entities;
-using MemoryKit.Domain.ValueObjects;
+// ============================================================================
+// OBSOLETE: These interfaces have been moved to MemoryKit.Domain.Interfaces
+// ============================================================================
+// This file is kept for backward compatibility but will be removed in v2.0
+// All interfaces are now defined in MemoryKit.Domain.Interfaces.DomainInterfaces
+//
+// Migration: Replace all using MemoryKit.Infrastructure.SemanticKernel;
+//            with using MemoryKit.Domain.Interfaces;
+// ============================================================================
+
+using MemoryKit.Domain.Interfaces;
 
 namespace MemoryKit.Infrastructure.SemanticKernel;
 
 /// <summary>
-/// Semantic Kernel Service - integrates with Azure OpenAI for embeddings and LLM operations.
+/// OBSOLETE: Use MemoryKit.Domain.Interfaces.ISemanticKernelService instead.
 /// </summary>
-public interface ISemanticKernelService
-{
-    /// <summary>
-    /// Generates an embedding vector for text.
-    /// </summary>
-    Task<float[]> GetEmbeddingAsync(
-        string text,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Classifies the type of query.
-    /// </summary>
-    Task<string> ClassifyQueryAsync(
-        string query,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Extracts entities from text.
-    /// </summary>
-    Task<ExtractedEntity[]> ExtractEntitiesAsync(
-        string text,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Completes a prompt using the configured LLM.
-    /// </summary>
-    Task<string> CompleteAsync(
-        string prompt,
-        int maxTokens = 2000,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Generates an answer with provided context.
-    /// </summary>
-    Task<string> AnswerWithContextAsync(
-        string query,
-        MemoryContext context,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Analyzes the sentiment of text.
-    /// </summary>
-    Task<(double Score, string Sentiment)> AnalyzeSentimentAsync(
-        string text,
-        CancellationToken cancellationToken = default);
-}
+[Obsolete("This interface has been moved to MemoryKit.Domain.Interfaces. Use ISemanticKernelService from MemoryKit.Domain.Interfaces instead.", error: false)]
+public interface ISemanticKernelService : Domain.Interfaces.ISemanticKernelService { }
