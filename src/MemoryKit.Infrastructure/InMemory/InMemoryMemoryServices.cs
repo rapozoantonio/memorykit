@@ -6,14 +6,18 @@ namespace MemoryKit.Infrastructure.InMemory;
 
 /// <summary>
 /// In-memory Working Memory Service implementation for MVP/testing.
-/// Implements Layer 3 (L3) - Hot context for active conversations.
+/// Implements Layer 3 (L3) - Hot context for active conversations with TTL-based cleanup.
 /// </summary>
 public class InMemoryWorkingMemoryService : IWorkingMemoryService
 {
-    private readonly Dictionary<string, List<Message>> _storage = new();
+    private readonly Dictionary<string, ConversationCache> _storage = new();
     private readonly object _lock = new();
     private const int MaxItems = 10;
+    private const int MaxConversations = 10000; // Prevent unbounded growth
+    private static readonly TimeSpan ConversationTtl = TimeSpan.FromHours(24); // 24 hour TTL
     private readonly ILogger<InMemoryWorkingMemoryService> _logger;
+    private DateTime _lastCleanup = DateTime.UtcNow;
+    private static readonly TimeSpan CleanupInterval = TimeSpan.FromMinutes(5);
 
     public InMemoryWorkingMemoryService(ILogger<InMemoryWorkingMemoryService> logger)
     {
@@ -30,31 +34,41 @@ public class InMemoryWorkingMemoryService : IWorkingMemoryService
 
         lock (_lock)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             var key = GetKey(userId, conversationId);
 
             if (!_storage.ContainsKey(key))
             {
-                _storage[key] = new List<Message>();
+                _storage[key] = new ConversationCache
+                {
+                    Messages = new List<Message>(),
+                    LastAccessed = DateTime.UtcNow
+                };
             }
 
-            _storage[key].Add(message);
+            _storage[key].Messages.Add(message);
+            _storage[key].LastAccessed = DateTime.UtcNow;
 
             // Keep only most recent/important items
-            if (_storage[key].Count > MaxItems)
+            if (_storage[key].Messages.Count > MaxItems)
             {
                 // Remove least important oldest message
-                var toRemove = _storage[key]
+                var toRemove = _storage[key].Messages
                     .OrderBy(m => m.Metadata.ImportanceScore)
                     .ThenBy(m => m.Timestamp)
                     .First();
 
-                _storage[key].Remove(toRemove);
+                _storage[key].Messages.Remove(toRemove);
             }
 
             _logger.LogDebug(
                 "Added message to working memory: {ConversationId}, Total: {Count}",
                 conversationId,
-                _storage[key].Count);
+                _storage[key].Messages.Count);
+
+            // Periodic cleanup
+            PerformPeriodicCleanup();
         }
     }
 
@@ -68,6 +82,8 @@ public class InMemoryWorkingMemoryService : IWorkingMemoryService
 
         lock (_lock)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             var key = GetKey(userId, conversationId);
 
             if (!_storage.ContainsKey(key))
@@ -75,7 +91,9 @@ public class InMemoryWorkingMemoryService : IWorkingMemoryService
                 return Array.Empty<Message>();
             }
 
-            return _storage[key]
+            _storage[key].LastAccessed = DateTime.UtcNow;
+
+            return _storage[key].Messages
                 .OrderByDescending(m => m.Timestamp)
                 .Take(count)
                 .OrderBy(m => m.Timestamp)
@@ -123,8 +141,74 @@ public class InMemoryWorkingMemoryService : IWorkingMemoryService
         }
     }
 
+    /// <summary>
+    /// Performs periodic cleanup of expired conversations (must be called within lock).
+    /// </summary>
+    private void PerformPeriodicCleanup()
+    {
+        var now = DateTime.UtcNow;
+
+        if (now - _lastCleanup < CleanupInterval && _storage.Count < MaxConversations)
+        {
+            return; // Not yet time for cleanup
+        }
+
+        _lastCleanup = now;
+        var cutoffTime = now - ConversationTtl;
+        var beforeCount = _storage.Count;
+
+        // Remove expired conversations
+        var expiredKeys = _storage
+            .Where(kvp => kvp.Value.LastAccessed < cutoffTime)
+            .Select(kvp => kvp.Key)
+            .ToList();
+
+        foreach (var key in expiredKeys)
+        {
+            _storage.Remove(key);
+        }
+
+        // If still over limit, remove oldest conversations (LRU eviction)
+        if (_storage.Count > MaxConversations)
+        {
+            var toEvict = _storage
+                .OrderBy(kvp => kvp.Value.LastAccessed)
+                .Take(_storage.Count - MaxConversations)
+                .Select(kvp => kvp.Key)
+                .ToList();
+
+            foreach (var key in toEvict)
+            {
+                _storage.Remove(key);
+            }
+
+            _logger.LogWarning(
+                "LRU eviction: Removed {Count} conversations to stay under limit of {MaxConversations}",
+                toEvict.Count,
+                MaxConversations);
+        }
+
+        if (expiredKeys.Count > 0)
+        {
+            _logger.LogInformation(
+                "Cleaned up {ExpiredCount} expired conversations (before: {Before}, after: {After})",
+                expiredKeys.Count,
+                beforeCount,
+                _storage.Count);
+        }
+    }
+
     private static string GetKey(string userId, string conversationId)
         => $"{userId}:{conversationId}";
+
+    /// <summary>
+    /// Cached conversation data with last access tracking.
+    /// </summary>
+    private class ConversationCache
+    {
+        public List<Message> Messages { get; set; } = new();
+        public DateTime LastAccessed { get; set; }
+    }
 }
 
 /// <summary>
@@ -176,6 +260,8 @@ public class InMemoryScratchpadService : IScratchpadService
 
         lock (_lock)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (!_storage.ContainsKey(userId))
             {
                 return Array.Empty<ExtractedFact>();
@@ -208,6 +294,8 @@ public class InMemoryScratchpadService : IScratchpadService
 
         lock (_lock)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             foreach (var userFacts in _storage.Values)
             {
                 var fact = userFacts.FirstOrDefault(f => f.Id == factId);
@@ -226,6 +314,8 @@ public class InMemoryScratchpadService : IScratchpadService
 
         lock (_lock)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (!_storage.ContainsKey(userId))
             {
                 return;
@@ -323,6 +413,8 @@ public class InMemoryEpisodicMemoryService : IEpisodicMemoryService
 
         lock (_lock)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (!_messagesByUser.ContainsKey(userId))
             {
                 return Array.Empty<Message>();

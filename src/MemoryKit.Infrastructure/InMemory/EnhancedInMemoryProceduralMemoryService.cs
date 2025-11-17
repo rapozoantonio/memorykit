@@ -16,6 +16,7 @@ public class EnhancedInMemoryProceduralMemoryService : IProceduralMemoryService
     private readonly ISemanticKernelService? _semanticKernel;
     private readonly ILogger<EnhancedInMemoryProceduralMemoryService> _logger;
     private readonly object _lock = new();
+    private readonly SemaphoreSlim _consolidationSemaphore = new(1, 1); // Only one consolidation at a time
 
     public EnhancedInMemoryProceduralMemoryService(
         ILogger<EnhancedInMemoryProceduralMemoryService> logger,
@@ -121,13 +122,36 @@ public class EnhancedInMemoryProceduralMemoryService : IProceduralMemoryService
                     bestMatch.Name,
                     bestScore,
                     bestMatch.UsageCount);
-
-                // Trigger pattern consolidation if needed
-                _ = Task.Run(() => ConsolidatePatternsAsync(userId, cancellationToken), cancellationToken);
             }
-
-            return bestMatch;
         }
+
+        // Trigger pattern consolidation OUTSIDE the lock to avoid race condition
+        if (bestMatch != null && bestMatch.UsageCount % 10 == 0) // Only consolidate every 10 uses
+        {
+            _ = TriggerConsolidationAsync(userId);
+        }
+
+        return bestMatch;
+    }
+
+    /// <summary>
+    /// Triggers pattern consolidation in the background without blocking.
+    /// </summary>
+    private Task TriggerConsolidationAsync(string userId)
+    {
+        // Fire and forget with proper cancellation handling
+        return Task.Run(async () =>
+        {
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+                await ConsolidatePatternsAsync(userId, cts.Token);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Pattern consolidation failed for user {UserId}", userId);
+            }
+        });
     }
 
     public Task StorePatternAsync(
@@ -384,6 +408,7 @@ Return ONLY valid JSON array. If no patterns found, return empty array [].";
 
     /// <summary>
     /// Consolidates similar patterns to reduce redundancy.
+    /// Uses semaphore to ensure only one consolidation runs at a time.
     /// </summary>
     private async Task ConsolidatePatternsAsync(
         string userId,
@@ -392,9 +417,18 @@ Return ONLY valid JSON array. If no patterns found, return empty array [].";
         if (!_patterns.TryGetValue(userId, out var userPatterns))
             return;
 
-        await Task.Delay(100, cancellationToken); // Debounce
+        // Use semaphore to ensure only one consolidation at a time
+        if (!await _consolidationSemaphore.WaitAsync(0, cancellationToken))
+        {
+            _logger.LogDebug("Consolidation already running, skipping for user {UserId}", userId);
+            return; // Another consolidation is already running
+        }
 
-        lock (_lock)
+        try
+        {
+            await Task.Delay(100, cancellationToken); // Debounce
+
+            lock (_lock)
         {
             var toConsolidate = new List<(ProceduralPattern, ProceduralPattern)>();
 
@@ -431,6 +465,11 @@ Return ONLY valid JSON array. If no patterns found, return empty array [].";
                 _logger.LogInformation("Consolidated {Count} similar patterns for user {UserId}",
                     toConsolidate.Count, userId);
             }
+        }
+        }
+        finally
+        {
+            _consolidationSemaphore.Release();
         }
     }
 
