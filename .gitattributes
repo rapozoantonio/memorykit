@@ -1,0 +1,101 @@
+# Set default behavior to automatically normalize line endings
+* text=auto
+
+# Force batch scripts to always use CRLF line endings so that if a repo is accessed
+# in Windows via a file share from Linux, the scripts will work
+*.{cmd,[cC][mM][dD]} text eol=crlf
+*.{bat,[bB][aA][tT]} text eol=crlf
+
+# Force bash scripts to always use LF line endings so that if a repo is accessed
+# in Unix via a file share from Windows, the scripts will work
+*.sh text eol=lf
+*.bash text eol=lf
+
+# Archives
+*.7z binary
+*.gz binary
+*.jar binary
+*.rar binary
+*.tar binary
+*.zip binary
+
+# Images
+*.ai binary
+*.bmp binary
+*.gif binary
+*.ico binary
+*.jpeg binary
+*.jpg binary
+*.png binary
+*.psd binary
+*.svg binary
+*.tif binary
+*.tiff binary
+*.webp binary
+
+# Fonts
+*.eot binary
+*.otf binary
+*.ttf binary
+*.woff binary
+*.woff2 binary
+
+# Documents
+*.doc binary
+*.docx binary
+*.pdf binary
+*.rtf binary
+*.xls binary
+*.xlsx binary
+
+# .NET specific
+*.cs text=auto diff=csharp
+*.csx text=auto diff=csharp
+*.vb text=auto
+*.vbx text=auto
+*.sln text eol=crlf merge=union
+*.csproj text eol=crlf merge=union
+*.vbproj text eol=crlf merge=union
+*.vcxproj text eol=crlf merge=union
+*.vcproj text eol=crlf merge=union
+*.dbproj text eol=crlf merge=union
+*.fsproj text eol=crlf merge=union
+*.lsproj text eol=crlf merge=union
+*.wixproj text eol=crlf merge=union
+*.modelproj text eol=crlf merge=union
+*.sqlproj text eol=crlf merge=union
+*.wwaproj text eol=crlf merge=union
+*.xproj text eol=crlf merge=union
+*.props text eol=crlf merge=union
+*.filters text eol=crlf merge=union
+*.vcxitems text eol=crlf merge=union
+
+# Config files
+*.config text eol=crlf
+*.json text eol=lf
+*.xml text eol=crlf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Documentation
+*.md text eol=lf
+*.markdown text eol=lf
+*.txt text eol=lf
+
+# Web
+*.css text eol=lf
+*.htm text eol=lf
+*.html text eol=lf
+*.js text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+
+# Docker
+Dockerfile text eol=lf
+*.dockerfile text eol=lf
+
+# Compiled files
+*.dll binary
+*.exe binary
+*.nupkg binary
+*.snupkg binary

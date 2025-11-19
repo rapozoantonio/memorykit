@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "MemoryKit.BlazorDemo": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:60747;http://localhost:60748"
+    }
+  }
+}
