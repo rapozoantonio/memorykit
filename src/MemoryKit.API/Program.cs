@@ -1,3 +1,4 @@
+using FluentValidation;
 using FluentValidation.AspNetCore;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication;
@@ -137,7 +138,7 @@ builder.Services
     });
 
 // Add FluentValidation
-builder.Services.AddValidatorsFromAssemblyContaining<MemoryKit.Application.Validators.CreateMessageRequestValidator>();
+builder.Services.AddValidatorsFromAssembly(typeof(MemoryKit.Application.Validators.CreateMessageRequestValidator).Assembly);
 
 // ============================================================================
 // 6. API DOCUMENTATION (Swagger/OpenAPI)
@@ -231,39 +232,40 @@ builder.Services.AddSingleton<MemoryKit.Infrastructure.SemanticKernel.ISemanticK
     else
     {
         logger.LogWarning("Azure OpenAI not configured. Using mock Semantic Kernel service.");
-        return new MemoryKit.Infrastructure.SemanticKernel.MockSemanticKernelService(logger);
+        var mockLogger = sp.GetRequiredService<ILogger<MemoryKit.Infrastructure.SemanticKernel.MockSemanticKernelService>>();
+        return new MemoryKit.Infrastructure.SemanticKernel.MockSemanticKernelService(mockLogger);
     }
 });
 
 // Register Memory Services (In-Memory implementations for MVP)
-builder.Services.AddSingleton<MemoryKit.Infrastructure.Azure.IWorkingMemoryService,
+builder.Services.AddSingleton<MemoryKit.Domain.Interfaces.IWorkingMemoryService,
     MemoryKit.Infrastructure.InMemory.InMemoryWorkingMemoryService>();
-builder.Services.AddSingleton<MemoryKit.Infrastructure.Azure.IScratchpadService,
+builder.Services.AddSingleton<MemoryKit.Domain.Interfaces.IScratchpadService,
     MemoryKit.Infrastructure.InMemory.InMemoryScratchpadService>();
-builder.Services.AddSingleton<MemoryKit.Infrastructure.Azure.IEpisodicMemoryService,
+builder.Services.AddSingleton<MemoryKit.Domain.Interfaces.IEpisodicMemoryService,
     MemoryKit.Infrastructure.InMemory.InMemoryEpisodicMemoryService>();
 
 // Register Enhanced Procedural Memory Service with AI support
-builder.Services.AddSingleton<MemoryKit.Infrastructure.Azure.IProceduralMemoryService>(sp =>
+builder.Services.AddSingleton<MemoryKit.Domain.Interfaces.IProceduralMemoryService>(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<MemoryKit.Infrastructure.InMemory.EnhancedInMemoryProceduralMemoryService>>();
-    var semanticKernel = sp.GetService<MemoryKit.Infrastructure.SemanticKernel.ISemanticKernelService>();
+    var semanticKernel = sp.GetService<MemoryKit.Domain.Interfaces.ISemanticKernelService>();
     return new MemoryKit.Infrastructure.InMemory.EnhancedInMemoryProceduralMemoryService(logger, semanticKernel);
 });
 
 // Register Cognitive Services
-builder.Services.AddSingleton<MemoryKit.Infrastructure.Cognitive.IPrefrontalController,
+builder.Services.AddSingleton<MemoryKit.Domain.Interfaces.IPrefrontalController,
     MemoryKit.Application.Services.PrefrontalController>();
-builder.Services.AddSingleton<MemoryKit.Infrastructure.Cognitive.IAmygdalaImportanceEngine,
+builder.Services.AddSingleton<MemoryKit.Domain.Interfaces.IAmygdalaImportanceEngine,
     MemoryKit.Application.Services.AmygdalaImportanceEngine>();
 
 // Register Hippocampus Indexer for memory consolidation
-builder.Services.AddSingleton<MemoryKit.Infrastructure.Cognitive.IHippocampusIndexer>(sp =>
+builder.Services.AddSingleton<MemoryKit.Domain.Interfaces.IHippocampusIndexer>(sp =>
 {
-    var workingMemory = sp.GetRequiredService<MemoryKit.Infrastructure.Azure.IWorkingMemoryService>();
-    var scratchpad = sp.GetRequiredService<MemoryKit.Infrastructure.Azure.IScratchpadService>();
-    var episodic = sp.GetRequiredService<MemoryKit.Infrastructure.Azure.IEpisodicMemoryService>();
-    var amygdala = sp.GetRequiredService<MemoryKit.Infrastructure.Cognitive.IAmygdalaImportanceEngine>();
+    var workingMemory = sp.GetRequiredService<MemoryKit.Domain.Interfaces.IWorkingMemoryService>();
+    var scratchpad = sp.GetRequiredService<MemoryKit.Domain.Interfaces.IScratchpadService>();
+    var episodic = sp.GetRequiredService<MemoryKit.Domain.Interfaces.IEpisodicMemoryService>();
+    var amygdala = sp.GetRequiredService<MemoryKit.Domain.Interfaces.IAmygdalaImportanceEngine>();
     var logger = sp.GetRequiredService<ILogger<MemoryKit.Infrastructure.Cognitive.HippocampusIndexer>>();
     return new MemoryKit.Infrastructure.Cognitive.HippocampusIndexer(workingMemory, scratchpad, episodic, amygdala, logger);
 });
@@ -271,14 +273,14 @@ builder.Services.AddSingleton<MemoryKit.Infrastructure.Cognitive.IHippocampusInd
 // Register Memory Orchestrator
 builder.Services.AddSingleton<MemoryKit.Domain.Interfaces.IMemoryOrchestrator>(sp =>
 {
-    var workingMemory = sp.GetRequiredService<MemoryKit.Infrastructure.Azure.IWorkingMemoryService>();
-    var scratchpad = sp.GetRequiredService<MemoryKit.Infrastructure.Azure.IScratchpadService>();
-    var episodic = sp.GetRequiredService<MemoryKit.Infrastructure.Azure.IEpisodicMemoryService>();
-    var procedural = sp.GetRequiredService<MemoryKit.Infrastructure.Azure.IProceduralMemoryService>();
-    var prefrontal = sp.GetRequiredService<MemoryKit.Infrastructure.Cognitive.IPrefrontalController>();
-    var amygdala = sp.GetRequiredService<MemoryKit.Infrastructure.Cognitive.IAmygdalaImportanceEngine>();
+    var workingMemory = sp.GetRequiredService<MemoryKit.Domain.Interfaces.IWorkingMemoryService>();
+    var scratchpad = sp.GetRequiredService<MemoryKit.Domain.Interfaces.IScratchpadService>();
+    var episodic = sp.GetRequiredService<MemoryKit.Domain.Interfaces.IEpisodicMemoryService>();
+    var procedural = sp.GetRequiredService<MemoryKit.Domain.Interfaces.IProceduralMemoryService>();
+    var prefrontal = sp.GetRequiredService<MemoryKit.Domain.Interfaces.IPrefrontalController>();
+    var amygdala = sp.GetRequiredService<MemoryKit.Domain.Interfaces.IAmygdalaImportanceEngine>();
     var logger = sp.GetRequiredService<ILogger<MemoryKit.Application.Services.MemoryOrchestrator>>();
-    var semanticKernel = sp.GetService<MemoryKit.Infrastructure.SemanticKernel.ISemanticKernelService>();
+    var semanticKernel = sp.GetService<MemoryKit.Domain.Interfaces.ISemanticKernelService>();
 
     return new MemoryKit.Application.Services.MemoryOrchestrator(
         workingMemory, scratchpad, episodic, procedural, prefrontal, amygdala, logger);

@@ -42,10 +42,16 @@ public class CognitiveServicesHealthCheck : IHealthCheck
             {
                 var testPlan = await _prefrontal.BuildQueryPlanAsync(
                     "test query",
-                    new MemoryKit.Domain.ValueObjects.ConversationState
+                    new MemoryKit.Domain.Interfaces.ConversationState
                     {
+                        UserId = "healthcheck",
                         ConversationId = "healthcheck",
                         MessageCount = 0,
+                        TurnCount = 0,
+                        ElapsedTime = TimeSpan.Zero,
+                        QueryCount = 1,
+                        LastQueryTime = DateTime.UtcNow,
+                        AverageResponseTimeMs = 0,
                         LastActivity = DateTime.UtcNow
                     },
                     cancellationToken);
