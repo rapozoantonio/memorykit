@@ -150,14 +150,16 @@ public class ExtractedFactTests
         var fact = ExtractedFact.Create("user123", "conv123", "key", "value", EntityType.Other, 0.5);
         var initialUpdatedAt = fact.UpdatedAt;
 
-        Thread.Sleep(10);
+        Thread.Sleep(100); // Increased to ensure timestamp difference
 
         // Act
         fact.UpdateImportance(0.9);
 
         // Assert
         Assert.Equal(0.9, fact.Importance);
-        Assert.True(fact.UpdatedAt > initialUpdatedAt);
+        Assert.NotNull(fact.UpdatedAt);
+        Assert.True(fact.UpdatedAt.Value > (initialUpdatedAt ?? DateTime.MinValue), 
+            $"Expected UpdatedAt ({fact.UpdatedAt}) to be greater than initial ({initialUpdatedAt})");
     }
 
     [Fact]

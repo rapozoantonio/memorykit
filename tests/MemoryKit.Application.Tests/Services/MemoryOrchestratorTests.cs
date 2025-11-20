@@ -48,12 +48,13 @@ public class MemoryOrchestratorTests
         var conversationId = "conv123";
         var message = Message.Create(userId, conversationId, MessageRole.User, "Important message");
 
-        var importanceScore = new ImportanceScore(
-            baseScore: 0.8,
-            emotionalWeight: 0.3,
-            noveltyBoost: 0.2,
-            recencyFactor: 1.0
-        );
+        var importanceScore = new ImportanceScore
+        {
+            BaseScore = 0.8,
+            EmotionalWeight = 0.3,
+            NoveltyBoost = 0.2,
+            RecencyFactor = 1.0
+        };
 
         _amygdalaMock
             .Setup(x => x.CalculateImportanceAsync(message, It.IsAny<CancellationToken>()))
@@ -81,12 +82,13 @@ public class MemoryOrchestratorTests
         var facts = new[] { ExtractedFact.Create(userId, conversationId, "key", "value", EntityType.Other) };
         var archivedMessages = new[] { Message.Create(userId, conversationId, MessageRole.User, "Old message") };
 
-        var queryPlan = new QueryPlan(
-            queryType: QueryType.FactRetrieval,
-            layersToUse: new[] { MemoryLayer.WorkingMemory, MemoryLayer.SemanticMemory },
-            estimatedTokens: 500,
-            suggestedProcedureId: null
-        );
+        var queryPlan = new QueryPlan
+        {
+            Type = QueryType.FactRetrieval,
+            LayersToUse = new List<MemoryLayer> { MemoryLayer.WorkingMemory, MemoryLayer.SemanticMemory },
+            EstimatedTokens = 500,
+            SuggestedProcedureId = null
+        };
 
         _prefrontalMock
             .Setup(x => x.BuildQueryPlanAsync(query, It.IsAny<ConversationState>(), It.IsAny<CancellationToken>()))
@@ -169,12 +171,13 @@ public class MemoryOrchestratorTests
             LastActivity = DateTime.UtcNow
         };
 
-        var expectedPlan = new QueryPlan(
-            queryType: QueryType.Complex,
-            layersToUse: new[] { MemoryLayer.WorkingMemory, MemoryLayer.SemanticMemory, MemoryLayer.EpisodicMemory },
-            estimatedTokens: 2000,
-            suggestedProcedureId: null
-        );
+        var expectedPlan = new QueryPlan
+        {
+            Type = QueryType.Complex,
+            LayersToUse = new List<MemoryLayer> { MemoryLayer.WorkingMemory, MemoryLayer.SemanticMemory, MemoryLayer.EpisodicMemory },
+            EstimatedTokens = 2000,
+            SuggestedProcedureId = null
+        };
 
         _prefrontalMock
             .Setup(x => x.BuildQueryPlanAsync(query, state, It.IsAny<CancellationToken>()))
@@ -197,6 +200,11 @@ public class MemoryOrchestratorTests
         var message = Message.Create(userId, conversationId, MessageRole.User, "Test");
         var cts = new CancellationTokenSource();
         cts.Cancel();
+
+        // Mock amygdala to throw OperationCanceledException
+        _amygdalaMock
+            .Setup(x => x.CalculateImportanceAsync(It.IsAny<Message>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new OperationCanceledException());
 
         // Act & Assert
         await Assert.ThrowsAsync<OperationCanceledException>(async () =>

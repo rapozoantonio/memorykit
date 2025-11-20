@@ -151,7 +151,8 @@ public class InMemoryWorkingMemoryServiceTests
         cts.Cancel();
 
         // Act & Assert
-        await Assert.ThrowsAsync<OperationCanceledException>(async () =>
+        // TaskCanceledException derives from OperationCanceledException
+        await Assert.ThrowsAsync<TaskCanceledException>(async () =>
             await _service.AddAsync(userId, conversationId, message, cts.Token));
     }
 
