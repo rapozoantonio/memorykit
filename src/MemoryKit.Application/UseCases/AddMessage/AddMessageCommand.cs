@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.Extensions.Logging;
 using MemoryKit.Application.DTOs;
 using MemoryKit.Domain.Entities;
 using MemoryKit.Domain.Interfaces;
@@ -18,13 +19,13 @@ public record AddMessageCommand(
 /// </summary>
 public class AddMessageHandler : IRequestHandler<AddMessageCommand, MessageResponse>
 {
-    private readonly Domain.Interfaces.IMemoryOrchestrator _orchestrator;
-    private readonly Infrastructure.SemanticKernel.ISemanticKernelService _llm;
+    private readonly IMemoryOrchestrator _orchestrator;
+    private readonly ISemanticKernelService _llm;
     private readonly ILogger<AddMessageHandler> _logger;
 
     public AddMessageHandler(
-        Domain.Interfaces.IMemoryOrchestrator orchestrator,
-        Infrastructure.SemanticKernel.ISemanticKernelService llm,
+        IMemoryOrchestrator orchestrator,
+        ISemanticKernelService llm,
         ILogger<AddMessageHandler> logger)
     {
         _orchestrator = orchestrator;
@@ -50,10 +51,9 @@ public class AddMessageHandler : IRequestHandler<AddMessageCommand, MessageRespo
 
         // Apply metadata
         if (request.Request.Content.Contains('?'))
+        {
             message.MarkAsQuestion();
-
-        if (request.Request.Tags?.Length > 0)
-            message.Metadata = message.Metadata with { Tags = request.Request.Tags };
+        }
 
         // Extract entities in background
         _ = Task.Run(async () =>

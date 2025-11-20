@@ -1,4 +1,6 @@
+using Microsoft.Extensions.Logging;
 using MemoryKit.Domain.Entities;
+using MemoryKit.Domain.Enums;
 using MemoryKit.Domain.Interfaces;
 using MemoryKit.Domain.ValueObjects;
 
@@ -44,6 +46,46 @@ public class AmygdalaImportanceEngine : IAmygdalaImportanceEngine
             recencyFactor);
 
         return Task.FromResult(importance);
+    }
+
+    public Task<(double Score, string Sentiment)> AnalyzeSentimentAsync(string text, CancellationToken cancellationToken = default)
+    {
+        // Simplified sentiment analysis - production would use Azure AI
+        var score = CalculateEmotionalWeight(
+            Message.Create("system", "temp", Domain.Enums.MessageRole.System, text));
+        var sentiment = score > 0.7 ? "Positive" : score < 0.3 ? "Negative" : "Neutral";
+        return Task.FromResult((score, sentiment));
+    }
+
+    public bool ContainsDecisionLanguage(string text)
+    {
+        return DecisionPatterns.Any(p =>
+            text.Contains(p, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public bool HasExplicitImportanceMarkers(string text)
+    {
+        return ImportanceMarkers.Any(m =>
+            text.Contains(m, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public Task<double> CalculateEntityImportanceAsync(
+        string entityKey,
+        string entityValue,
+        CancellationToken cancellationToken = default)
+    {
+        // Base importance score for entities
+        double score = 0.5;
+
+        // Longer values are often more important (descriptions, explanations)
+        if (entityValue.Length > 100)
+            score += 0.2;
+
+        // Technical terms and proper nouns are important
+        if (char.IsUpper(entityValue[0]))
+            score += 0.1;
+
+        return Task.FromResult(Math.Min(score, 1.0));
     }
 
     /// <summary>

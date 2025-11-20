@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Microsoft.Extensions.Logging;
 using MemoryKit.Domain.Entities;
 using MemoryKit.Domain.Interfaces;
 
@@ -10,18 +11,18 @@ namespace MemoryKit.Infrastructure.Cognitive;
 /// </summary>
 public class HippocampusIndexer : IHippocampusIndexer
 {
-    private readonly IWorkingMemoryService _workingMemory;
-    private readonly IScratchpadService _scratchpad;
-    private readonly IEpisodicMemoryService _episodicMemory;
-    private readonly IAmygdalaImportanceEngine _amygdala;
+    private readonly Domain.Interfaces.IWorkingMemoryService _workingMemory;
+    private readonly Domain.Interfaces.IScratchpadService _scratchpad;
+    private readonly Domain.Interfaces.IEpisodicMemoryService _episodicMemory;
+    private readonly Domain.Interfaces.IAmygdalaImportanceEngine _amygdala;
     private readonly ILogger<HippocampusIndexer> _logger;
     private readonly ConcurrentDictionary<string, List<string>> _pendingConsolidation = new();
 
     public HippocampusIndexer(
-        IWorkingMemoryService workingMemory,
-        IScratchpadService scratchpad,
-        IEpisodicMemoryService episodicMemory,
-        IAmygdalaImportanceEngine amygdala,
+        Domain.Interfaces.IWorkingMemoryService workingMemory,
+        Domain.Interfaces.IScratchpadService scratchpad,
+        Domain.Interfaces.IEpisodicMemoryService episodicMemory,
+        Domain.Interfaces.IAmygdalaImportanceEngine amygdala,
         ILogger<HippocampusIndexer> logger)
     {
         _workingMemory = workingMemory ?? throw new ArgumentNullException(nameof(workingMemory));
@@ -44,10 +45,8 @@ public class HippocampusIndexer : IHippocampusIndexer
                 message,
                 cancellationToken);
 
-            message.Metadata = message.Metadata with
-            {
-                ImportanceScore = importance.FinalScore
-            };
+            // Mark message as important (uses proper method to update metadata)
+            message.MarkAsImportant(importance.FinalScore);
 
             // Return encoding ID (message ID)
             return message.Id;
@@ -167,10 +166,8 @@ public class HippocampusIndexer : IHippocampusIndexer
                 message,
                 cancellationToken);
 
-            message.Metadata = message.Metadata with
-            {
-                ImportanceScore = importance.FinalScore
-            };
+            // Mark message as important (uses proper method to update metadata)
+            message.MarkAsImportant(importance.FinalScore);
 
             // Archive to episodic memory
             await _episodicMemory.ArchiveAsync(message, cancellationToken);
@@ -210,12 +207,12 @@ public class HippocampusIndexer : IHippocampusIndexer
         }
     }
 
-    public Task<ConsolidationMetrics> GetConsolidationMetricsAsync(
+    public Task<Domain.Interfaces.ConsolidationMetrics> GetConsolidationMetricsAsync(
         string userId,
         CancellationToken cancellationToken = default)
     {
         // Simplified metrics for in-memory implementation
-        var metrics = new ConsolidationMetrics
+        var metrics = new Domain.Interfaces.ConsolidationMetrics
         {
             UserId = userId,
             LastConsolidation = DateTime.UtcNow,
@@ -225,15 +222,4 @@ public class HippocampusIndexer : IHippocampusIndexer
 
         return Task.FromResult(metrics);
     }
-}
-
-/// <summary>
-/// Metrics about memory consolidation.
-/// </summary>
-public record ConsolidationMetrics
-{
-    public string UserId { get; init; } = string.Empty;
-    public DateTime LastConsolidation { get; init; }
-    public int MessagesConsolidated { get; init; }
-    public double AverageImportanceScore { get; init; }
 }

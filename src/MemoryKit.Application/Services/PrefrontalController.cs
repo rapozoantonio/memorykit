@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using MemoryKit.Domain.Enums;
 using MemoryKit.Domain.Interfaces;
 using MemoryKit.Domain.ValueObjects;
@@ -34,6 +35,18 @@ public class PrefrontalController : IPrefrontalController
         // Default to complex for unclassified queries
         _logger.LogDebug("Could not quick classify, defaulting to Complex query type");
         return Task.FromResult(CreatePlan(QueryType.Complex, state));
+    }
+
+    public Task<QueryType> ClassifyQueryAsync(string query, CancellationToken cancellationToken = default)
+    {
+        var quickType = QuickClassify(query);
+        return Task.FromResult(quickType ?? QueryType.Complex);
+    }
+
+    public List<MemoryLayer> DetermineLayersToUse(QueryType queryType, ConversationState state)
+    {
+        var plan = CreatePlan(queryType, state);
+        return plan.LayersToUse;
     }
 
     /// <summary>

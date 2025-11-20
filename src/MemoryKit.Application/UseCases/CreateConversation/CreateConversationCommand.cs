@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.Extensions.Logging;
 using MemoryKit.Application.DTOs;
 using MemoryKit.Domain.Entities;
 

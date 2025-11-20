@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 using MemoryKit.Domain.Entities;
 using MemoryKit.Domain.Enums;
 using MemoryKit.Domain.Interfaces;
