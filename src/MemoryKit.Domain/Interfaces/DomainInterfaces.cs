@@ -1,4 +1,5 @@
 using MemoryKit.Domain.Entities;
+using MemoryKit.Domain.Enums;
 using MemoryKit.Domain.ValueObjects;
 
 namespace MemoryKit.Domain.Interfaces;

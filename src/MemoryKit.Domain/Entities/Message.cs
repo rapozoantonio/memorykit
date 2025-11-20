@@ -1,5 +1,6 @@
 using MemoryKit.Domain.Common;
 using MemoryKit.Domain.Enums;
+using MemoryKit.Domain.ValueObjects;
 
 namespace MemoryKit.Domain.Entities;
 
@@ -151,40 +152,4 @@ public record MessageMetadata
     /// Creates a default metadata instance.
     /// </summary>
     public static MessageMetadata Default() => new();
-}
-
-/// <summary>
-/// Represents an extracted entity from a message.
-/// </summary>
-public record ExtractedEntity
-{
-    /// <summary>
-    /// Gets the key/name of the entity.
-    /// </summary>
-    public required string Key { get; init; }
-
-    /// <summary>
-    /// Gets the value of the entity.
-    /// </summary>
-    public required string Value { get; init; }
-
-    /// <summary>
-    /// Gets the type of the entity.
-    /// </summary>
-    public required EntityType Type { get; init; }
-
-    /// <summary>
-    /// Gets the importance score of this entity.
-    /// </summary>
-    public double Importance { get; init; } = 0.5;
-
-    /// <summary>
-    /// Gets a value indicating whether this is a newly discovered entity.
-    /// </summary>
-    public bool IsNovel { get; init; }
-
-    /// <summary>
-    /// Gets the embedding vector for semantic search.
-    /// </summary>
-    public float[]? Embedding { get; init; }
 }
