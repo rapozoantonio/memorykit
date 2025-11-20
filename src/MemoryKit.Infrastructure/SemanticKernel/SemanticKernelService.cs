@@ -1,5 +1,8 @@
+#pragma warning disable SKEXP0001, SKEXP0011 // Suppress experimental API warnings for Semantic Kernel
+
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
@@ -60,8 +63,8 @@ public class SemanticKernelService : ISemanticKernelService
                 }
 
                 _kernel = builder.Build();
-                _embeddings = _kernel.GetService<ITextEmbeddingGenerationService>();
-                _chat = _kernel.GetService<IChatCompletionService>();
+                _embeddings = _kernel.Services.GetService<ITextEmbeddingGenerationService>();
+                _chat = _kernel.Services.GetService<IChatCompletionService>();
                 _isConfigured = true;
 
                 _logger.LogInformation("SemanticKernelService initialized successfully");

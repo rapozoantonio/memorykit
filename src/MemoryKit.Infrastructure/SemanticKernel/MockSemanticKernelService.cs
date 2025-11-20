@@ -1,5 +1,6 @@
 using MemoryKit.Domain.Entities;
 using MemoryKit.Domain.Enums;
+using MemoryKit.Domain.Interfaces;
 using MemoryKit.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 

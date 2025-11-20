@@ -97,7 +97,7 @@ public class InMemoryStorage
                 value = (T?)obj;
                 return value != null;
             }
-            value = null;
+            value = default(T);
             return false;
         }
     }

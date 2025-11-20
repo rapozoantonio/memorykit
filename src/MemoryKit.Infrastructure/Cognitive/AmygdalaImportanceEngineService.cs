@@ -89,6 +89,24 @@ public class AmygdalaImportanceEngineService : IAmygdalaImportanceEngine
         }
     }
 
+    public Task<double> CalculateEntityImportanceAsync(
+        string entityKey,
+        string entityValue,
+        CancellationToken cancellationToken = default)
+    {
+        double score = 0.5;
+
+        // Longer values are often more important
+        if (entityValue.Length > 100)
+            score += 0.2;
+
+        // Technical terms and proper nouns
+        if (entityValue.Length > 0 && char.IsUpper(entityValue[0]))
+            score += 0.1;
+
+        return Task.FromResult(Math.Min(score, 1.0));
+    }
+
     public bool ContainsDecisionLanguage(string text)
     {
         var lower = text.ToLowerInvariant();

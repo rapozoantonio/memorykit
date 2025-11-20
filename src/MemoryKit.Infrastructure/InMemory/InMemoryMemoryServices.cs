@@ -582,14 +582,13 @@ public class InMemoryProceduralMemoryService : IProceduralMemoryService
         // Detect procedural instructions like "always...", "never...", "from now on..."
         if (content.Contains("always") || content.Contains("never") || content.Contains("from now on"))
         {
-            var pattern = new ProceduralPattern
-            {
-                UserId = userId,
-                Name = $"Auto-detected pattern from message {message.Id[..8]}",
-                Description = message.Content.Length > 100
+            var pattern = ProceduralPattern.Create(
+                userId: userId,
+                name: $"Auto-detected pattern from message {message.Id[..8]}",
+                description: message.Content.Length > 100
                     ? message.Content[..100] + "..."
                     : message.Content,
-                Triggers = new[]
+                triggers: new[]
                 {
                     new PatternTrigger
                     {
@@ -597,12 +596,9 @@ public class InMemoryProceduralMemoryService : IProceduralMemoryService
                         Pattern = ExtractKeyword(message.Content)
                     }
                 },
-                InstructionTemplate = message.Content,
-                ConfidenceThreshold = 0.7,
-                UsageCount = 0,
-                CreatedAt = DateTime.UtcNow,
-                LastUsed = DateTime.UtcNow
-            };
+                instructionTemplate: message.Content,
+                confidenceThreshold: 0.7
+            );
 
             await StorePatternAsync(pattern, cancellationToken);
 
@@ -629,6 +625,20 @@ public class InMemoryProceduralMemoryService : IProceduralMemoryService
                 .OrderByDescending(p => p.UsageCount)
                 .ToArray();
         }
+    }
+
+    public Task DeleteUserDataAsync(string userId, CancellationToken cancellationToken = default)
+    {
+        lock (_lock)
+        {
+            if (_patternsByUser.ContainsKey(userId))
+            {
+                _patternsByUser.Remove(userId);
+                _logger.LogInformation("Deleted all procedural patterns for user {UserId}", userId);
+            }
+        }
+
+        return Task.CompletedTask;
     }
 
     private string ExtractKeyword(string content)
