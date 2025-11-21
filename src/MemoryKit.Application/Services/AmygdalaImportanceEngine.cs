@@ -91,7 +91,7 @@ public class AmygdalaImportanceEngine : IAmygdalaImportanceEngine
     /// <summary>
     /// Calculates base importance score based on content patterns.
     /// </summary>
-    private double CalculateBaseScore(Message message)
+    public virtual double CalculateBaseScore(Message message)
     {
         double score = 0.5; // Baseline
 
@@ -124,7 +124,7 @@ public class AmygdalaImportanceEngine : IAmygdalaImportanceEngine
     /// Calculates emotional weight based on sentiment markers.
     /// This is a simplified version - production would use Azure AI sentiment analysis.
     /// </summary>
-    private double CalculateEmotionalWeight(Message message)
+    public virtual double CalculateEmotionalWeight(Message message)
     {
         var content = message.Content.ToLowerInvariant();
         double emotionalScore = 0.0;
@@ -152,7 +152,7 @@ public class AmygdalaImportanceEngine : IAmygdalaImportanceEngine
     /// Calculates novelty boost based on new information.
     /// Simplified version - production would use embeddings to detect truly novel content.
     /// </summary>
-    private double CalculateNoveltyBoost(Message message)
+    public virtual double CalculateNoveltyBoost(Message message)
     {
         // Check if message introduces new entities (simplified)
         var newEntityCount = message.Metadata.ExtractedEntities?
@@ -170,7 +170,7 @@ public class AmygdalaImportanceEngine : IAmygdalaImportanceEngine
     /// <summary>
     /// Calculates recency factor with exponential decay.
     /// </summary>
-    private double CalculateRecencyFactor(Message message)
+    public virtual double CalculateRecencyFactor(Message message)
     {
         var age = DateTime.UtcNow - message.Timestamp;
 

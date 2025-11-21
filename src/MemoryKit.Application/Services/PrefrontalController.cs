@@ -52,7 +52,7 @@ public class PrefrontalController : IPrefrontalController
     /// <summary>
     /// Quick pattern-based classification for common query types.
     /// </summary>
-    private QueryType? QuickClassify(string query)
+    public virtual QueryType? QuickClassify(string query)
     {
         var lower = query.ToLowerInvariant().Trim();
 
@@ -78,7 +78,7 @@ public class PrefrontalController : IPrefrontalController
     /// <summary>
     /// Creates a query plan based on the query type.
     /// </summary>
-    private QueryPlan CreatePlan(QueryType type, ConversationState state)
+    public virtual QueryPlan CreatePlan(QueryType type, ConversationState state)
     {
         var plan = type switch
         {

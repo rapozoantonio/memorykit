@@ -218,7 +218,7 @@ builder.Services.AddHealthChecks()
 // ============================================================================
 
 // Register Semantic Kernel Service
-builder.Services.AddSingleton<MemoryKit.Infrastructure.SemanticKernel.ISemanticKernelService>(sp =>
+builder.Services.AddSingleton<MemoryKit.Domain.Interfaces.ISemanticKernelService>(sp =>
 {
     var config = sp.GetRequiredService<IConfiguration>();
     var logger = sp.GetRequiredService<ILogger<MemoryKit.Infrastructure.SemanticKernel.SemanticKernelService>>();
@@ -253,11 +253,27 @@ builder.Services.AddSingleton<MemoryKit.Domain.Interfaces.IProceduralMemoryServi
     return new MemoryKit.Infrastructure.InMemory.EnhancedInMemoryProceduralMemoryService(logger, semanticKernel);
 });
 
-// Register Cognitive Services
-builder.Services.AddSingleton<MemoryKit.Domain.Interfaces.IPrefrontalController,
-    MemoryKit.Application.Services.PrefrontalController>();
-builder.Services.AddSingleton<MemoryKit.Domain.Interfaces.IAmygdalaImportanceEngine,
-    MemoryKit.Application.Services.AmygdalaImportanceEngine>();
+// Register Cognitive Services using Decorator Pattern
+// Base Application services (fast heuristics)
+builder.Services.AddSingleton<MemoryKit.Application.Services.PrefrontalController>();
+builder.Services.AddSingleton<MemoryKit.Application.Services.AmygdalaImportanceEngine>();
+
+// Enhanced Infrastructure services (wraps base + adds LLM capabilities)
+builder.Services.AddSingleton<MemoryKit.Domain.Interfaces.IPrefrontalController>(sp =>
+{
+    var baseController = sp.GetRequiredService<MemoryKit.Application.Services.PrefrontalController>();
+    var llm = sp.GetRequiredService<MemoryKit.Domain.Interfaces.ISemanticKernelService>();
+    var logger = sp.GetRequiredService<ILogger<MemoryKit.Infrastructure.Cognitive.PrefrontalControllerService>>();
+    return new MemoryKit.Infrastructure.Cognitive.PrefrontalControllerService(baseController, llm, logger);
+});
+
+builder.Services.AddSingleton<MemoryKit.Domain.Interfaces.IAmygdalaImportanceEngine>(sp =>
+{
+    var baseEngine = sp.GetRequiredService<MemoryKit.Application.Services.AmygdalaImportanceEngine>();
+    var llm = sp.GetRequiredService<MemoryKit.Domain.Interfaces.ISemanticKernelService>();
+    var logger = sp.GetRequiredService<ILogger<MemoryKit.Infrastructure.Cognitive.AmygdalaImportanceEngineService>>();
+    return new MemoryKit.Infrastructure.Cognitive.AmygdalaImportanceEngineService(baseEngine, llm, logger);
+});
 
 // Register Hippocampus Indexer for memory consolidation
 builder.Services.AddSingleton<MemoryKit.Domain.Interfaces.IHippocampusIndexer>(sp =>
@@ -269,6 +285,9 @@ builder.Services.AddSingleton<MemoryKit.Domain.Interfaces.IHippocampusIndexer>(s
     var logger = sp.GetRequiredService<ILogger<MemoryKit.Infrastructure.Cognitive.HippocampusIndexer>>();
     return new MemoryKit.Infrastructure.Cognitive.HippocampusIndexer(workingMemory, scratchpad, episodic, amygdala, logger);
 });
+
+// Register Performance Metrics Collector
+builder.Services.AddSingleton<MemoryKit.Infrastructure.Monitoring.PerformanceMetricsCollector>();
 
 // Register Memory Orchestrator
 builder.Services.AddSingleton<MemoryKit.Domain.Interfaces.IMemoryOrchestrator>(sp =>

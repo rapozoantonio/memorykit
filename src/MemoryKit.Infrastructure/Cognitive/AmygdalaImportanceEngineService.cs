@@ -1,3 +1,4 @@
+using MemoryKit.Application.Services;
 using MemoryKit.Domain.Entities;
 using MemoryKit.Domain.Interfaces;
 using MemoryKit.Domain.ValueObjects;
@@ -6,31 +7,21 @@ using Microsoft.Extensions.Logging;
 namespace MemoryKit.Infrastructure.Cognitive;
 
 /// <summary>
-/// Amygdala Importance Engine - emotional tagging and importance scoring.
-/// Implements TRD Section 6.3.
+/// Enhanced Amygdala Importance Engine - wraps base implementation with LLM-powered sentiment analysis.
+/// Uses Decorator pattern to add LLM capabilities while reusing core heuristic logic.
 /// </summary>
 public class AmygdalaImportanceEngineService : IAmygdalaImportanceEngine
 {
+    private readonly AmygdalaImportanceEngine _baseEngine;
     private readonly ISemanticKernelService _llm;
     private readonly ILogger<AmygdalaImportanceEngineService> _logger;
 
-    private static readonly string[] DecisionPatterns = new[]
-    {
-        "i will", "let's", "we should", "i decided", "going to",
-        "plan to", "commit to", "promise", "agree to"
-    };
-
-    private static readonly string[] ImportanceMarkers = new[]
-    {
-        "important", "critical", "remember", "don't forget",
-        "always", "never", "from now on", "note that", "key",
-        "crucial", "essential", "vital"
-    };
-
     public AmygdalaImportanceEngineService(
+        AmygdalaImportanceEngine baseEngine,
         ISemanticKernelService llm,
         ILogger<AmygdalaImportanceEngineService> logger)
     {
+        _baseEngine = baseEngine;
         _llm = llm;
         _logger = logger;
     }
@@ -40,15 +31,18 @@ public class AmygdalaImportanceEngineService : IAmygdalaImportanceEngine
         CancellationToken cancellationToken = default)
     {
         _logger.LogDebug(
-            "Calculating importance for message {MessageId}",
+            "Calculating enhanced importance for message {MessageId}",
             message.Id);
 
-        var baseScore = CalculateBaseScore(message);
-        var emotionalWeight = await CalculateEmotionalWeightAsync(
-            message.Content,
+        // Get base scores from heuristic engine
+        var baseScore = _baseEngine.CalculateBaseScore(message);
+        var noveltyBoost = _baseEngine.CalculateNoveltyBoost(message);
+        var recencyFactor = _baseEngine.CalculateRecencyFactor(message);
+
+        // Enhance emotional weight with LLM sentiment analysis
+        var emotionalWeight = await CalculateEnhancedEmotionalWeightAsync(
+            message,
             cancellationToken);
-        var noveltyBoost = CalculateNoveltyBoost(message);
-        var recencyFactor = CalculateRecencyFactor(message);
 
         var score = new ImportanceScore
         {
@@ -59,7 +53,7 @@ public class AmygdalaImportanceEngineService : IAmygdalaImportanceEngine
         };
 
         _logger.LogDebug(
-            "Importance score: Base={Base:F2}, Emotional={Emotional:F2}, " +
+            "Enhanced importance score: Base={Base:F2}, Emotional={Emotional:F2}, " +
             "Novelty={Novelty:F2}, Recency={Recency:F2}, Final={Final:F2}",
             score.BaseScore,
             score.EmotionalWeight,
@@ -94,126 +88,52 @@ public class AmygdalaImportanceEngineService : IAmygdalaImportanceEngine
         string entityValue,
         CancellationToken cancellationToken = default)
     {
-        double score = 0.5;
-
-        // Longer values are often more important
-        if (entityValue.Length > 100)
-            score += 0.2;
-
-        // Technical terms and proper nouns
-        if (entityValue.Length > 0 && char.IsUpper(entityValue[0]))
-            score += 0.1;
-
-        return Task.FromResult(Math.Min(score, 1.0));
+        // Delegate to base engine
+        return _baseEngine.CalculateEntityImportanceAsync(entityKey, entityValue, cancellationToken);
     }
 
     public bool ContainsDecisionLanguage(string text)
     {
-        var lower = text.ToLowerInvariant();
-        return DecisionPatterns.Any(pattern =>
-            lower.Contains(pattern, StringComparison.OrdinalIgnoreCase));
+        // Delegate to base engine
+        return _baseEngine.ContainsDecisionLanguage(text);
     }
 
     public bool HasExplicitImportanceMarkers(string text)
     {
-        var lower = text.ToLowerInvariant();
-        return ImportanceMarkers.Any(marker =>
-            lower.Contains(marker, StringComparison.OrdinalIgnoreCase));
+        // Delegate to base engine
+        return _baseEngine.HasExplicitImportanceMarkers(text);
     }
 
     /// <summary>
-    /// Calculates base importance score using heuristics.
+    /// Calculates enhanced emotional weight combining heuristics and LLM sentiment analysis.
+    /// Falls back to base heuristics if LLM fails.
     /// </summary>
-    private double CalculateBaseScore(Message message)
-    {
-        double score = 0.5; // Baseline
-
-        // Question detection (user asking for information)
-        if (message.Content.Contains('?'))
-        {
-            score += 0.2;
-        }
-
-        // Decision language
-        if (ContainsDecisionLanguage(message.Content))
-        {
-            score += 0.3;
-        }
-
-        // Explicit importance markers
-        if (HasExplicitImportanceMarkers(message.Content))
-        {
-            score += 0.5;
-        }
-
-        // Code blocks (technical importance)
-        if (message.Content.Contains("```") || message.Content.Contains("```"))
-        {
-            score += 0.15;
-        }
-
-        // Long messages are often more important
-        if (message.Content.Length > 500)
-        {
-            score += 0.1;
-        }
-
-        // User messages are generally more important than assistant
-        if (message.Role == Domain.Enums.MessageRole.User)
-        {
-            score += 0.1;
-        }
-
-        return Math.Clamp(score, 0.0, 1.0);
-    }
-
-    /// <summary>
-    /// Calculates emotional weight using sentiment analysis.
-    /// </summary>
-    private async Task<double> CalculateEmotionalWeightAsync(
-        string content,
+    private async Task<double> CalculateEnhancedEmotionalWeightAsync(
+        Message message,
         CancellationToken cancellationToken)
     {
+        // Start with base heuristic emotional weight
+        var baseEmotionalWeight = _baseEngine.CalculateEmotionalWeight(message);
+
         try
         {
-            var sentiment = await AnalyzeSentimentAsync(content, cancellationToken);
+            // Enhance with LLM sentiment analysis
+            var sentiment = await AnalyzeSentimentAsync(message.Content, cancellationToken);
 
-            // High absolute sentiment = high importance
-            // Range: -1 to +1, we want 0 to 1
-            return Math.Abs(sentiment.Score) * 0.5;
+            // High absolute sentiment = high importance (Range: -1 to +1, we want 0 to 1)
+            var llmEmotionalWeight = Math.Abs(sentiment.Score) * 0.5;
+
+            // Use the maximum of heuristic and LLM scores for best accuracy
+            return Math.Max(baseEmotionalWeight, llmEmotionalWeight);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(
                 ex,
-                "Failed to calculate emotional weight, using default");
+                "LLM sentiment analysis failed, using base heuristic emotional weight");
 
-            return 0.0;
+            // Graceful degradation: return base heuristic score
+            return baseEmotionalWeight;
         }
-    }
-
-    /// <summary>
-    /// Calculates novelty boost based on new entities.
-    /// </summary>
-    private double CalculateNoveltyBoost(Message message)
-    {
-        // Check if message introduces new entities
-        var newEntityCount = message.Metadata.ExtractedEntities?
-            .Count(e => e.IsNovel) ?? 0;
-
-        return Math.Min(newEntityCount * 0.1, 0.5);
-    }
-
-    /// <summary>
-    /// Calculates recency factor with exponential decay.
-    /// Importance decreases over time.
-    /// </summary>
-    private double CalculateRecencyFactor(Message message)
-    {
-        var age = DateTime.UtcNow - message.Timestamp;
-
-        // Exponential decay: importance halves every 24 hours
-        // After 3 days, recency factor is ~12.5% of original
-        return Math.Exp(-age.TotalHours / 24.0);
     }
 }
