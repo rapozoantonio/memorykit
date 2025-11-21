@@ -37,6 +37,15 @@ TestResults/
 *.trx
 *.coverage
 
+# BenchmarkDotNet artifacts
+**/BenchmarkDotNet.Artifacts/
+**/*.Benchmarks.*/
+
+# Load test results
+**/k6-results/
+**/results.json
+**/report.html
+
 # NuGet
 *.nupkg
 *.snupkg

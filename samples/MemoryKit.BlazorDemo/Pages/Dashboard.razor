@@ -1,0 +1,290 @@
+@page "/dashboard"
+@using MemoryKit.ClientSDK
+@inject ILogger<Dashboard> Logger
+@implements IDisposable
+
+<PageTitle>MemoryKit Dashboard</PageTitle>
+
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <h1>📊 MemoryKit Performance Dashboard</h1>
+        <div class="refresh-control">
+            <span class="refresh-status">@(autoRefresh ? "🟢 Auto-refresh: ON" : "🔴 Auto-refresh: OFF")</span>
+            <button class="btn-toggle" @onclick="ToggleAutoRefresh">
+                @(autoRefresh ? "Disable" : "Enable")
+            </button>
+            <button class="btn-refresh" @onclick="RefreshMetrics">🔄 Refresh Now</button>
+        </div>
+    </div>
+
+    @if (isLoading && metrics == null)
+    {
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p>Loading dashboard...</p>
+        </div>
+    }
+    else if (errorMessage != null)
+    {
+        <div class="error-message">
+            <h3>⚠️ Error Loading Data</h3>
+            <p>@errorMessage</p>
+            <button class="btn-retry" @onclick="RefreshMetrics">Retry</button>
+        </div>
+    }
+    else if (metrics != null)
+    {
+        <div class="metrics-grid">
+            <!-- Health Status Card -->
+            <div class="metric-card @(health?.Status == "Healthy" ? "healthy" : "warning")">
+                <div class="card-header">
+                    <h3>System Health</h3>
+                    <span class="health-icon">@(health?.Status == "Healthy" ? "✅" : "⚠️")</span>
+                </div>
+                <div class="card-body">
+                    <div class="metric-value">@health?.Status</div>
+                    <div class="metric-label">@health?.Message</div>
+                </div>
+            </div>
+
+            <!-- Total Operations Card -->
+            <div class="metric-card">
+                <div class="card-header">
+                    <h3>Total Operations</h3>
+                    <span class="trend-icon">📈</span>
+                </div>
+                <div class="card-body">
+                    <div class="metric-value">@metrics.TotalOperations.ToString("N0")</div>
+                    <div class="metric-label">Last @windowMinutes minutes</div>
+                </div>
+            </div>
+
+            <!-- Throughput Card -->
+            <div class="metric-card">
+                <div class="card-header">
+                    <h3>Throughput</h3>
+                    <span class="trend-icon">⚡</span>
+                </div>
+                <div class="card-body">
+                    <div class="metric-value">@metrics.OperationsPerSecond.ToString("F1")</div>
+                    <div class="metric-label">ops/second</div>
+                </div>
+            </div>
+
+            <!-- Average Latency Card -->
+            <div class="metric-card">
+                <div class="card-header">
+                    <h3>Avg Latency</h3>
+                    <span class="trend-icon">⏱️</span>
+                </div>
+                <div class="card-body">
+                    <div class="metric-value">@metrics.AverageLatencyMs.ToString("F2")ms</div>
+                    <div class="metric-label">Average response time</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Latency Percentiles -->
+        <div class="percentile-section">
+            <h2>Latency Percentiles</h2>
+            <div class="percentile-bars">
+                <div class="percentile-bar">
+                    <div class="bar-label">P50 (Median)</div>
+                    <div class="bar-container">
+                        <div class="bar p50" style="width: @GetPercentileWidth(metrics.P50LatencyMs)%"></div>
+                        <span class="bar-value">@metrics.P50LatencyMs.ToString("F2")ms</span>
+                    </div>
+                </div>
+                <div class="percentile-bar">
+                    <div class="bar-label">P95</div>
+                    <div class="bar-container">
+                        <div class="bar p95" style="width: @GetPercentileWidth(metrics.P95LatencyMs)%"></div>
+                        <span class="bar-value">@metrics.P95LatencyMs.ToString("F2")ms</span>
+                    </div>
+                </div>
+                <div class="percentile-bar">
+                    <div class="bar-label">P99</div>
+                    <div class="bar-container">
+                        <div class="bar p99" style="width: @GetPercentileWidth(metrics.P99LatencyMs)%"></div>
+                        <span class="bar-value">@metrics.P99LatencyMs.ToString("F2")ms</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Operation Breakdown -->
+        @if (metrics.OperationBreakdown.Any())
+        {
+            <div class="operations-section">
+                <h2>Operation Breakdown</h2>
+                <div class="operations-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Operation</th>
+                                <th>Count</th>
+                                <th>Avg (ms)</th>
+                                <th>Min (ms)</th>
+                                <th>Max (ms)</th>
+                                <th>Performance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var (operation, stats) in metrics.OperationBreakdown.OrderByDescending(kvp => kvp.Value.Count))
+                            {
+                                <tr>
+                                    <td class="operation-name">@operation</td>
+                                    <td>@stats.Count</td>
+                                    <td>@stats.AverageMs.ToString("F2")</td>
+                                    <td>@stats.MinMs.ToString("F2")</td>
+                                    <td>@stats.MaxMs.ToString("F2")</td>
+                                    <td>
+                                        <div class="performance-indicator @GetPerformanceClass(stats.AverageMs)">
+                                            @GetPerformanceEmoji(stats.AverageMs)
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+
+        <div class="footer-info">
+            <p>Last updated: @lastUpdate.ToString("HH:mm:ss")</p>
+            <p>Dashboard refreshes @(autoRefresh ? $"every {refreshIntervalSeconds} seconds" : "manually")</p>
+        </div>
+    }
+</div>
+
+@code {
+    private MemoryKitClient? client;
+    private PerformanceMetricsResponse? metrics;
+    private HealthResponse? health;
+    private bool isLoading = true;
+    private string? errorMessage;
+    private bool autoRefresh = true;
+    private DateTime lastUpdate = DateTime.Now;
+    private int windowMinutes = 5;
+    private int refreshIntervalSeconds = 5;
+    private System.Threading.Timer? refreshTimer;
+
+    private string apiBaseUrl = "https://localhost:5001"; // Update with your API URL
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            client = new MemoryKitClient(apiBaseUrl);
+            await RefreshMetrics();
+            
+            if (autoRefresh)
+            {
+                StartAutoRefresh();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to initialize dashboard");
+            errorMessage = "Failed to connect to MemoryKit API. Please ensure the API is running.";
+            isLoading = false;
+        }
+    }
+
+    private async Task RefreshMetrics()
+    {
+        if (client == null)
+            return;
+
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            // Fetch metrics and health in parallel
+            var metricsTask = client.GetPerformanceMetricsAsync(windowMinutes);
+            var healthTask = client.GetHealthAsync();
+
+            await Task.WhenAll(metricsTask, healthTask);
+
+            metrics = await metricsTask;
+            health = await healthTask;
+            lastUpdate = DateTime.Now;
+        }
+        catch (HttpRequestException ex)
+        {
+            Logger.LogError(ex, "HTTP error fetching metrics");
+            errorMessage = "Unable to connect to the API. Is the MemoryKit API running?";
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error fetching metrics");
+            errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void ToggleAutoRefresh()
+    {
+        autoRefresh = !autoRefresh;
+        
+        if (autoRefresh)
+        {
+            StartAutoRefresh();
+        }
+        else
+        {
+            StopAutoRefresh();
+        }
+    }
+
+    private void StartAutoRefresh()
+    {
+        refreshTimer = new System.Threading.Timer(async _ =>
+        {
+            await RefreshMetrics();
+        }, null, TimeSpan.FromSeconds(refreshIntervalSeconds), TimeSpan.FromSeconds(refreshIntervalSeconds));
+    }
+
+    private void StopAutoRefresh()
+    {
+        refreshTimer?.Dispose();
+        refreshTimer = null;
+    }
+
+    private double GetPercentileWidth(double latencyMs)
+    {
+        // Scale bars relative to P99 (max value)
+        if (metrics == null || metrics.P99LatencyMs == 0)
+            return 0;
+        
+        return Math.Min((latencyMs / metrics.P99LatencyMs) * 100, 100);
+    }
+
+    private string GetPerformanceClass(double avgMs)
+    {
+        if (avgMs < 50) return "excellent";
+        if (avgMs < 100) return "good";
+        if (avgMs < 200) return "fair";
+        return "poor";
+    }
+
+    private string GetPerformanceEmoji(double avgMs)
+    {
+        if (avgMs < 50) return "🟢";
+        if (avgMs < 100) return "🟡";
+        if (avgMs < 200) return "🟠";
+        return "🔴";
+    }
+
+    public void Dispose()
+    {
+        StopAutoRefresh();
+        client?.Dispose();
+    }
+}

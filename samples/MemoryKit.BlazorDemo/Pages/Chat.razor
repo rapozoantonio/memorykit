@@ -1,0 +1,280 @@
+@page "/chat"
+@using MemoryKit.Application.DTOs
+@using MemoryKit.Application.Services
+@using MemoryKit.Domain.Interfaces
+@inject IMemoryOrchestrator Orchestrator
+@inject ILogger<Chat> Logger
+
+<PageTitle>MemoryKit Chat</PageTitle>
+
+<div class="chat-container">
+    <div class="chat-header">
+        <h2>🧠 MemoryKit-Powered Chat</h2>
+        <div class="stats-toggle">
+            <button class="btn-stats" @onclick="ToggleStats">
+                @if (showStats)
+                {
+                    <span>Hide Stats</span>
+                }
+                else
+                {
+                    <span>Show Stats</span>
+                }
+            </button>
+        </div>
+    </div>
+
+    @if (showStats)
+    {
+        <div class="memory-stats">
+            <div class="stat-card">
+                <div class="stat-label">Total Messages</div>
+                <div class="stat-value">@totalMessages</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Active Memories</div>
+                <div class="stat-value">@activeMemories</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Avg Importance</div>
+                <div class="stat-value">@avgImportance.ToString("F2")</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">High Priority</div>
+                <div class="stat-value">@highPriorityCount</div>
+            </div>
+        </div>
+    }
+
+    <div class="chat-messages" @ref="messagesContainer">
+        @foreach (var msg in messages)
+        {
+            <div class="message @msg.Role">
+                <div class="message-header">
+                    <span class="message-role">@msg.Role</span>
+                    @if (msg.Role == "User" && msg.Importance > 0)
+                    {
+                        <span class="importance-badge" style="background-color: @GetImportanceColor(msg.Importance)">
+                            @msg.Importance.ToString("F1")
+                        </span>
+                    }
+                    <span class="message-time">@msg.Timestamp.ToString("HH:mm:ss")</span>
+                </div>
+                <div class="message-content">@msg.Content</div>
+                @if (msg.Role == "User" && !string.IsNullOrEmpty(msg.Context))
+                {
+                    <div class="message-context">
+                        <details>
+                            <summary>🧠 Context Used (@msg.ContextCount items)</summary>
+                            <pre>@msg.Context</pre>
+                        </details>
+                    </div>
+                }
+            </div>
+        }
+        @if (isProcessing)
+        {
+            <div class="message Assistant processing">
+                <div class="message-header">
+                    <span class="message-role">Assistant</span>
+                </div>
+                <div class="message-content">
+                    <span class="typing-indicator">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </span>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="chat-input">
+        <input 
+            type="text" 
+            @bind="currentMessage" 
+            @bind:event="oninput"
+            @onkeypress="HandleKeyPress"
+            placeholder="Type your message... (Press Enter to send)"
+            disabled="@isProcessing" />
+        <button class="btn-send" @onclick="SendMessage" disabled="@isProcessing">
+            @if (isProcessing)
+            {
+                <span>⏳</span>
+            }
+            else
+            {
+                <span>Send</span>
+            }
+        </button>
+    </div>
+</div>
+
+@code {
+    private List<ChatMessageViewModel> messages = new();
+    private string currentMessage = string.Empty;
+    private bool isProcessing = false;
+    private bool showStats = true;
+    private ElementReference messagesContainer;
+
+    private string userId = "blazor-user-" + Guid.NewGuid().ToString("N")[..8];
+    private string conversationId = Guid.NewGuid().ToString();
+
+    private int totalMessages = 0;
+    private int activeMemories = 0;
+    private double avgImportance = 0.0;
+    private int highPriorityCount = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await InitializeConversation();
+        await RefreshStats();
+    }
+
+    private async Task InitializeConversation()
+    {
+        try
+        {
+            await Orchestrator.CreateConversationAsync(conversationId, userId, "Blazor Chat Demo");
+            
+            // Add welcome message
+            messages.Add(new ChatMessageViewModel
+            {
+                Role = "Assistant",
+                Content = "👋 Welcome! I'm powered by MemoryKit. I can remember our conversation context and provide relevant responses. Try asking me something!",
+                Timestamp = DateTime.Now
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to initialize conversation");
+        }
+    }
+
+    private async Task SendMessage()
+    {
+        if (string.IsNullOrWhiteSpace(currentMessage) || isProcessing)
+            return;
+
+        var userMessage = currentMessage;
+        currentMessage = string.Empty;
+        isProcessing = true;
+
+        try
+        {
+            // Add user message to UI
+            var userMsg = new ChatMessageViewModel
+            {
+                Role = "User",
+                Content = userMessage,
+                Timestamp = DateTime.Now
+            };
+            messages.Add(userMsg);
+            await InvokeAsync(StateHasChanged);
+
+            // Process through MemoryKit
+            var result = await Orchestrator.ProcessConversationAsync(conversationId, userId, userMessage);
+
+            // Get context for display
+            var context = await Orchestrator.GetConversationContextAsync(conversationId, userId, userMessage);
+            
+            // Update user message with importance and context
+            userMsg.Importance = result.CalculatedImportance;
+            userMsg.Context = string.Join("\n", context.RelevantMemories.Select(m => $"[{m.Timestamp:HH:mm}] {m.Content}"));
+            userMsg.ContextCount = context.RelevantMemories.Count;
+
+            // Simulate AI response (in real app, call your LLM service here)
+            var assistantContent = GenerateAIResponse(userMessage, context.RelevantMemories.Count);
+            
+            // Store assistant response
+            await Orchestrator.ProcessConversationAsync(conversationId, userId, assistantContent, isUserMessage: false);
+
+            messages.Add(new ChatMessageViewModel
+            {
+                Role = "Assistant",
+                Content = assistantContent,
+                Timestamp = DateTime.Now
+            });
+
+            await RefreshStats();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error processing message");
+            messages.Add(new ChatMessageViewModel
+            {
+                Role = "System",
+                Content = $"Error: {ex.Message}",
+                Timestamp = DateTime.Now
+            });
+        }
+        finally
+        {
+            isProcessing = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private string GenerateAIResponse(string userMessage, int contextCount)
+    {
+        // This is a mock response. In production, integrate with your LLM service
+        var responses = new[]
+        {
+            $"I understand. Based on {contextCount} relevant memories from our conversation, here's my response: {userMessage}",
+            $"That's interesting! I recall {contextCount} related points from our earlier discussion.",
+            $"Got it! MemoryKit helped me find {contextCount} relevant context items to inform my response.",
+            $"Thanks for sharing! Drawing from {contextCount} memories, I can help with that."
+        };
+        return responses[new Random().Next(responses.Length)];
+    }
+
+    private async Task RefreshStats()
+    {
+        try
+        {
+            totalMessages = messages.Count;
+            activeMemories = messages.Count(m => m.Role == "User");
+            
+            var userMessages = messages.Where(m => m.Role == "User" && m.Importance > 0).ToList();
+            avgImportance = userMessages.Any() ? userMessages.Average(m => m.Importance) : 0.0;
+            highPriorityCount = userMessages.Count(m => m.Importance >= 0.7);
+            
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error refreshing stats");
+        }
+    }
+
+    private void ToggleStats()
+    {
+        showStats = !showStats;
+    }
+
+    private async Task HandleKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+        {
+            await SendMessage();
+        }
+    }
+
+    private string GetImportanceColor(double importance)
+    {
+        if (importance >= 0.8) return "#dc3545"; // High - Red
+        if (importance >= 0.6) return "#fd7e14"; // Medium-High - Orange
+        if (importance >= 0.4) return "#ffc107"; // Medium - Yellow
+        return "#28a745"; // Low - Green
+    }
+
+    private class ChatMessageViewModel
+    {
+        public string Role { get; set; } = string.Empty;
+        public string Content { get; set; } = string.Empty;
+        public DateTime Timestamp { get; set; }
+        public double Importance { get; set; }
+        public string Context { get; set; } = string.Empty;
+        public int ContextCount { get; set; }
+    }
+}

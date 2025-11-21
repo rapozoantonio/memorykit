@@ -197,7 +197,7 @@ public class MemoryOrchestrator : IMemoryOrchestrator
 
         await Task.WhenAll(storageTasks);
 
-        // Step 3: Background processing with improved error handling
+        // Step 3: Background processing with some error handling
         // Note: Using Task.Run for background processing. In production, consider using
         // a background job queue (Hangfire, Quartz.NET) or IHostedService for better reliability.
         _ = Task.Run(async () =>

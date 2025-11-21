@@ -4,9 +4,9 @@ using Microsoft.Extensions.Logging;
 using MemoryKit.Application.Services;
 using MemoryKit.Domain.Entities;
 using MemoryKit.Domain.Enums;
+using MemoryKit.Domain.Interfaces;
 using MemoryKit.Domain.ValueObjects;
 using MemoryKit.Infrastructure.InMemory;
-using MemoryKit.Infrastructure.SemanticKernel;
 
 namespace MemoryKit.Benchmarks;
 
@@ -30,8 +30,9 @@ public class MemoryRetrievalBenchmarks
         _testUserId = "benchmark_user";
         _testConversationId = "benchmark_conv";
 
-        // Setup services
-        var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+        // Setup services with minimal logging for clean benchmark output
+        var loggerFactory = LoggerFactory.Create(builder => 
+            builder.AddConsole().SetMinimumLevel(LogLevel.Warning));
         _logger = loggerFactory.CreateLogger<MemoryOrchestrator>();
 
         var workingMemory = new InMemoryWorkingMemoryService(
@@ -198,6 +199,7 @@ public class MemoryRetrievalBenchmarks
             "what is the current status of the project?",
             new ConversationState
             {
+                UserId = _testUserId,
                 ConversationId = _testConversationId,
                 MessageCount = 10,
                 LastActivity = DateTime.UtcNow

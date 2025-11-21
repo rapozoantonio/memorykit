@@ -15,4 +15,10 @@
     <PackageReference Include="System.Net.Http.Json" Version="8.0.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\MemoryKit.Application\MemoryKit.Application.csproj" />
+    <ProjectReference Include="..\..\src\MemoryKit.Domain\MemoryKit.Domain.csproj" />
+    <ProjectReference Include="..\..\src\MemoryKit.Infrastructure\MemoryKit.Infrastructure.csproj" />
+  </ItemGroup>
+
 </Project>
