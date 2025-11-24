@@ -14,7 +14,7 @@
   <ItemGroup>
     <!-- ASP.NET Core & Web API -->
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.0" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.0.1" />
 
     <!-- CQRS & Validation -->
     <PackageReference Include="MediatR" Version="12.1.1" />
