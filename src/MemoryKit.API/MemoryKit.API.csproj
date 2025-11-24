@@ -25,7 +25,7 @@
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="9.0.0" />
 
     <!-- Rate Limiting (built into .NET 9) -->
-    <PackageReference Include="System.Threading.RateLimiting" Version="9.0.0" />
+    <PackageReference Include="System.Threading.RateLimiting" Version="10.0.0" />
 
     <!-- Configuration & DI -->
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
