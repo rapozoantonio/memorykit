@@ -21,6 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="MediatR" Version="13.1.0" />
     <ProjectReference Include="..\MemoryKit.Domain\MemoryKit.Domain.csproj" />
     <ProjectReference Include="..\MemoryKit.Application\MemoryKit.Application.csproj" />
   </ItemGroup>
