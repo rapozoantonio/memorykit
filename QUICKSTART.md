@@ -234,12 +234,44 @@ dotnet --version
 
 ## Database & Storage
 
-Currently uses **in-memory storage** for MVP. To enable Azure:
+MemoryKit supports **two storage providers**:
 
-1. Create Azure resources (see `docs/DEPLOYMENT.md`)
-2. Configure `appsettings.json` with connection strings
-3. Implement Azure service classes
-4. Register in dependency injection
+### In-Memory (Default)
+No setup required.
+
+```json
+{
+  "MemoryKit": {
+    "StorageProvider": "InMemory"
+  }
+}
+```
+
+### Azure (Production)
+Enterprise-grade persistent storage with automatic failover.
+
+**Required Resources:**
+- Azure Cache for Redis (Working Memory)
+- Azure Storage Account (Semantic/Procedural/Episodic)
+- Azure AI Search (Vector search)
+
+**Configuration:**
+
+```json
+{
+  "MemoryKit": {
+    "StorageProvider": "Azure",
+    "Azure": {
+      "RedisConnectionString": "${AZURE_REDIS_CONNECTION_STRING}",
+      "StorageConnectionString": "${AZURE_STORAGE_CONNECTION_STRING}",
+      "SearchEndpoint": "${AZURE_SEARCH_ENDPOINT}",
+      "SearchApiKey": "${AZURE_SEARCH_API_KEY}"
+    }
+  }
+}
+```
+
+See `docs/DEPLOYMENT.md` for detailed Azure setup.
 
 ## Configuration
 

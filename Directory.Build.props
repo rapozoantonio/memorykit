@@ -45,8 +45,14 @@
 
   <!-- Warning Suppressions -->
   <PropertyGroup>
-    <!-- Suppress specific warnings if needed -->
-    <!-- <NoWarn>$(NoWarn);CA1014</NoWarn> -->
+    <!-- Suppress specific low-risk code analysis warnings -->
+    <!-- CA1848: LoggerMessage delegates - traditional logging is acceptable -->
+    <!-- CA2007: ConfigureAwait - not critical for application code -->
+    <!-- CA1707: Test naming underscores - common test convention -->
+    <!-- CA1303/CA1305/CA1304/CA1311: Localization - not required for demos/internal tools -->
+    <!-- CA1307/CA1862: StringComparison preferences - style, not functional -->
+    <!-- IDE0011/IDE0040: Code style preferences -->
+    <NoWarn>$(NoWarn);CA1848;CA2007;CA1707;CA1303;CA1305;CA1304;CA1311;CA1307;CA1862;IDE0011;IDE0040</NoWarn>
   </PropertyGroup>
 
   <!-- Test Project Properties -->

@@ -7,6 +7,7 @@ using MemoryKit.Domain.Enums;
 using MemoryKit.Domain.Interfaces;
 using MemoryKit.Domain.ValueObjects;
 using MemoryKit.Infrastructure.InMemory;
+using MemoryKit.Infrastructure.SemanticKernel;
 
 namespace MemoryKit.Benchmarks;
 

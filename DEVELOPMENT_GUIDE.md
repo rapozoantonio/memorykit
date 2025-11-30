@@ -60,7 +60,7 @@ MemoryKit follows **Clean Architecture** principles with strict dependency rules
 - Application → Infrastructure (use interfaces from Domain)
 - Infrastructure → Application
 
-**Recent Fix**: We moved all service interfaces from `Infrastructure` to `Domain.Interfaces` to eliminate circular dependencies.
+**Architectural Decision**: All service interfaces are defined in `Domain.Interfaces` to eliminate circular dependencies and maintain clean architecture principles.
 
 ---
 

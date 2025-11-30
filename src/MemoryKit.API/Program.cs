@@ -4,6 +4,7 @@ using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.OpenApi.Models;
+using MemoryKit.Infrastructure.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -237,21 +238,8 @@ builder.Services.AddSingleton<MemoryKit.Domain.Interfaces.ISemanticKernelService
     }
 });
 
-// Register Memory Services (In-Memory implementations for MVP)
-builder.Services.AddSingleton<MemoryKit.Domain.Interfaces.IWorkingMemoryService,
-    MemoryKit.Infrastructure.InMemory.InMemoryWorkingMemoryService>();
-builder.Services.AddSingleton<MemoryKit.Domain.Interfaces.IScratchpadService,
-    MemoryKit.Infrastructure.InMemory.InMemoryScratchpadService>();
-builder.Services.AddSingleton<MemoryKit.Domain.Interfaces.IEpisodicMemoryService,
-    MemoryKit.Infrastructure.InMemory.InMemoryEpisodicMemoryService>();
-
-// Register Enhanced Procedural Memory Service with AI support
-builder.Services.AddSingleton<MemoryKit.Domain.Interfaces.IProceduralMemoryService>(sp =>
-{
-    var logger = sp.GetRequiredService<ILogger<MemoryKit.Infrastructure.InMemory.EnhancedInMemoryProceduralMemoryService>>();
-    var semanticKernel = sp.GetService<MemoryKit.Domain.Interfaces.ISemanticKernelService>();
-    return new MemoryKit.Infrastructure.InMemory.EnhancedInMemoryProceduralMemoryService(logger, semanticKernel);
-});
+// Register Memory Services (supports both InMemory and Azure providers via configuration)
+builder.Services.AddMemoryServices(builder.Configuration);
 
 // Register Cognitive Services using Decorator Pattern
 // Base Application services (fast heuristics)
