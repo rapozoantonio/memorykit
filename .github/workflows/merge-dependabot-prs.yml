@@ -1,0 +1,162 @@
+name: Merge Existing Dependabot PRs
+
+on:
+  workflow_dispatch:
+    inputs:
+      merge-type:
+        description: 'Type of updates to merge'
+        required: true
+        default: 'patch-and-minor'
+        type: choice
+        options:
+          - 'patch-only'
+          - 'patch-and-minor'
+          - 'all'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  merge-dependabot-prs:
+    name: Merge Dependabot PRs
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      
+      - name: Get open Dependabot PRs
+        id: get-prs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pullRequests } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100
+            });
+            
+            const dependabotPRs = pullRequests.filter(pr => pr.user.login === 'dependabot[bot]');
+            
+            console.log(`Found ${dependabotPRs.length} Dependabot PRs`);
+            
+            const prNumbers = dependabotPRs.map(pr => pr.number);
+            core.setOutput('pr-numbers', JSON.stringify(prNumbers));
+            core.setOutput('count', dependabotPRs.length);
+      
+      - name: Process and merge PRs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MERGE_TYPE: ${{ github.event.inputs.merge-type }}
+        run: |
+          PR_NUMBERS='${{ steps.get-prs.outputs.pr-numbers }}'
+          echo "Processing PRs: $PR_NUMBERS"
+          
+          # Parse JSON array
+          PR_COUNT=$(echo "$PR_NUMBERS" | jq '. | length')
+          echo "Total PRs to process: $PR_COUNT"
+          
+          MERGED_COUNT=0
+          SKIPPED_COUNT=0
+          
+          for i in $(seq 0 $((PR_COUNT - 1))); do
+            PR_NUMBER=$(echo "$PR_NUMBERS" | jq -r ".[$i]")
+            
+            echo "Processing PR #$PR_NUMBER"
+            
+            # Get PR details
+            PR_INFO=$(gh pr view "$PR_NUMBER" --json title,labels,commits --jq '.')
+            PR_TITLE=$(echo "$PR_INFO" | jq -r '.title')
+            
+            # Determine if it's a patch, minor, or major update
+            if echo "$PR_TITLE" | grep -iE 'bump.*from.*[0-9]+\.[0-9]+\.[0-9]+ to [0-9]+\.[0-9]+\.[0-9]+'; then
+              # Extract version numbers
+              FROM_VERSION=$(echo "$PR_TITLE" | grep -oE 'from [0-9]+\.[0-9]+\.[0-9]+' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+              TO_VERSION=$(echo "$PR_TITLE" | grep -oE 'to [0-9]+\.[0-9]+\.[0-9]+' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+              
+              FROM_MAJOR=$(echo "$FROM_VERSION" | cut -d. -f1)
+              FROM_MINOR=$(echo "$FROM_VERSION" | cut -d. -f2)
+              TO_MAJOR=$(echo "$TO_VERSION" | cut -d. -f1)
+              TO_MINOR=$(echo "$TO_VERSION" | cut -d. -f2)
+              
+              UPDATE_TYPE="unknown"
+              if [ "$FROM_MAJOR" != "$TO_MAJOR" ]; then
+                UPDATE_TYPE="major"
+              elif [ "$FROM_MINOR" != "$TO_MINOR" ]; then
+                UPDATE_TYPE="minor"
+              else
+                UPDATE_TYPE="patch"
+              fi
+              
+              echo "Detected update type: $UPDATE_TYPE"
+              
+              # Decide whether to merge based on input
+              SHOULD_MERGE=false
+              case "$MERGE_TYPE" in
+                "patch-only")
+                  [ "$UPDATE_TYPE" = "patch" ] && SHOULD_MERGE=true
+                  ;;
+                "patch-and-minor")
+                  [ "$UPDATE_TYPE" = "patch" ] || [ "$UPDATE_TYPE" = "minor" ] && SHOULD_MERGE=true
+                  ;;
+                "all")
+                  SHOULD_MERGE=true
+                  ;;
+              esac
+              
+              if [ "$SHOULD_MERGE" = true ]; then
+                echo "✅ Merging PR #$PR_NUMBER ($UPDATE_TYPE update)"
+                
+                # Check if CI has passed
+                gh pr checks "$PR_NUMBER" --watch --interval 30 || {
+                  echo "⚠️ CI checks failed or timed out for PR #$PR_NUMBER, skipping"
+                  SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+                  continue
+                }
+                
+                # Approve and merge
+                gh pr review "$PR_NUMBER" --approve --body "Auto-approved by merge workflow" || true
+                gh pr merge "$PR_NUMBER" --squash --auto || {
+                  echo "⚠️ Failed to merge PR #$PR_NUMBER"
+                  SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+                  continue
+                }
+                
+                MERGED_COUNT=$((MERGED_COUNT + 1))
+                sleep 5  # Rate limiting
+              else
+                echo "⏭️ Skipping PR #$PR_NUMBER ($UPDATE_TYPE update, not in merge scope)"
+                SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+              fi
+            else
+              echo "⚠️ Could not parse version from PR title, skipping"
+              SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+            fi
+          done
+          
+          echo ""
+          echo "=========================================="
+          echo "Summary:"
+          echo "  Merged: $MERGED_COUNT"
+          echo "  Skipped: $SKIPPED_COUNT"
+          echo "=========================================="
+      
+      - name: Create summary
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const summary = `## Dependabot PR Merge Summary
+            
+            - **Merge Type**: ${{ github.event.inputs.merge-type }}
+            - **Total PRs Processed**: ${{ steps.get-prs.outputs.count }}
+            
+            See workflow logs for details.`;
+            
+            await github.rest.repos.createCommitComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha,
+              body: summary
+            });

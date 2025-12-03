@@ -6,10 +6,10 @@ updates:
   - package-ecosystem: "nuget"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
       day: "monday"
       time: "04:00"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
     reviewers:
       - "rapozoantonio"
     assignees:
@@ -25,18 +25,25 @@ updates:
       - dependency-name: "Microsoft.*"
         update-types: ["version-update:semver-major"]
     groups:
-      microsoft-packages:
+      # Group ALL minor and patch updates together
+      all-dependencies:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+      # Separate group for Microsoft packages (major updates only)
+      microsoft-major:
         patterns:
           - "Microsoft.*"
         update-types:
-          - "minor"
-          - "patch"
-      azure-packages:
+          - "major"
+      # Separate group for Azure packages (major updates only)
+      azure-major:
         patterns:
           - "Azure.*"
         update-types:
-          - "minor"
-          - "patch"
+          - "major"
 
   # =============================================================================
   # GitHub Actions
@@ -44,10 +51,10 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
       day: "monday"
       time: "04:00"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 3
     reviewers:
       - "rapozoantonio"
     labels:
@@ -56,6 +63,13 @@ updates:
     commit-message:
       prefix: "ci"
       include: "scope"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   # =============================================================================
   # Docker
@@ -63,10 +77,10 @@ updates:
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
       day: "monday"
       time: "04:00"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 3
     reviewers:
       - "rapozoantonio"
     labels:
@@ -75,3 +89,10 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
+    groups:
+      docker-images:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
