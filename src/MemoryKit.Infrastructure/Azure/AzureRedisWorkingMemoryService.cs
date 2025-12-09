@@ -1,6 +1,9 @@
+using System.Text;
 using System.Text.Json;
 using MemoryKit.Domain.Entities;
 using MemoryKit.Domain.Interfaces;
+using MemoryKit.Infrastructure.Compression;
+using MemoryKit.Infrastructure.Serialization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
@@ -15,16 +18,19 @@ public class AzureRedisWorkingMemoryService : IWorkingMemoryService
     private readonly IConnectionMultiplexer _redis;
     private readonly IDatabase _db;
     private readonly ILogger<AzureRedisWorkingMemoryService> _logger;
+    private readonly ICompressionService? _compressionService;
     private readonly int _maxItems;
     private readonly TimeSpan _conversationTtl;
 
     public AzureRedisWorkingMemoryService(
         IConnectionMultiplexer redis,
         IConfiguration configuration,
-        ILogger<AzureRedisWorkingMemoryService> logger)
+        ILogger<AzureRedisWorkingMemoryService> logger,
+        ICompressionService? compressionService = null)
     {
         _redis = redis ?? throw new ArgumentNullException(nameof(redis));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _compressionService = compressionService;
         _db = redis.GetDatabase();
 
         // Configuration
@@ -46,10 +52,22 @@ public class AzureRedisWorkingMemoryService : IWorkingMemoryService
         try
         {
             var key = GetKey(userId, conversationId);
-            var json = JsonSerializer.Serialize(message);
+            var json = SerializationHelper.Serialize(message);
+
+            // Optionally compress if service is configured
+            RedisValue value;
+            if (_compressionService != null)
+            {
+                var compressed = await _compressionService.CompressAsync(json);
+                value = compressed;
+            }
+            else
+            {
+                value = json;
+            }
 
             // Store as a sorted set with timestamp as score
-            await _db.SortedSetAddAsync(key, json, message.Timestamp.Ticks);
+            await _db.SortedSetAddAsync(key, value, message.Timestamp.Ticks);
 
             // Keep only most recent MaxItems
             await _db.SortedSetRemoveRangeByRankAsync(key, 0, -_maxItems - 1);
@@ -88,7 +106,19 @@ public class AzureRedisWorkingMemoryService : IWorkingMemoryService
             {
                 try
                 {
-                    var message = JsonSerializer.Deserialize<Message>(value.ToString());
+                    string json;
+                    if (_compressionService != null && value.HasValue)
+                    {
+                        // Try to decompress (may be compressed or uncompressed)
+                        var bytes = (byte[])value!;
+                        json = await _compressionService.DecompressToStringAsync(bytes);
+                    }
+                    else
+                    {
+                        json = value.ToString();
+                    }
+
+                    var message = SerializationHelper.Deserialize<Message>(json);
                     if (message != null)
                         messages.Add(message);
                 }

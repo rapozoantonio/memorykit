@@ -49,9 +49,30 @@ public class ExtractedFact : Entity<string>
     public int AccessCount { get; private set; }
 
     /// <summary>
-    /// Gets the embedding vector for semantic search.
+    /// Gets the embedding vector for semantic search (uncompressed).
     /// </summary>
     public float[]? Embedding { get; private set; }
+
+    /// <summary>
+    /// Gets the quantized embedding data (compressed, Int8 format).
+    /// When set, this takes precedence over Embedding for storage.
+    /// </summary>
+    public byte[]? QuantizedEmbeddingData { get; private set; }
+
+    /// <summary>
+    /// Gets the scale factor for quantized embedding reconstruction.
+    /// </summary>
+    public float? QuantizedScale { get; private set; }
+
+    /// <summary>
+    /// Gets the offset for quantized embedding reconstruction.
+    /// </summary>
+    public float? QuantizedOffset { get; private set; }
+
+    /// <summary>
+    /// Indicates whether this fact uses quantized embeddings.
+    /// </summary>
+    public bool IsQuantized => QuantizedEmbeddingData != null;
 
     /// <summary>
     /// Factory method to create a new fact.
@@ -115,6 +136,19 @@ public class ExtractedFact : Entity<string>
     public void SetEmbedding(float[] embedding)
     {
         Embedding = embedding;
+    }
+
+    /// <summary>
+    /// Sets the quantized embedding data (Int8 format).
+    /// This is the preferred storage format for embeddings.
+    /// </summary>
+    public void SetQuantizedEmbedding(byte[] data, float scale, float offset)
+    {
+        QuantizedEmbeddingData = data ?? throw new ArgumentNullException(nameof(data));
+        QuantizedScale = scale;
+        QuantizedOffset = offset;
+        // Clear full-precision embedding to save memory
+        Embedding = null;
     }
 
     /// <summary>

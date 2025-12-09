@@ -3,6 +3,8 @@ using Azure.Data.Tables;
 using MemoryKit.Domain.Entities;
 using MemoryKit.Domain.Enums;
 using MemoryKit.Domain.Interfaces;
+using MemoryKit.Infrastructure.Embeddings;
+using MemoryKit.Infrastructure.Serialization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -16,14 +18,17 @@ public class AzureTableScratchpadService : IScratchpadService
 {
     private readonly TableClient _tableClient;
     private readonly ILogger<AzureTableScratchpadService> _logger;
+    private readonly IEmbeddingQuantizer? _quantizer;
     private readonly TimeSpan _factTtl;
 
     public AzureTableScratchpadService(
         TableServiceClient tableServiceClient,
         IConfiguration configuration,
-        ILogger<AzureTableScratchpadService> logger)
+        ILogger<AzureTableScratchpadService> logger,
+        IEmbeddingQuantizer? quantizer = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _quantizer = quantizer;
 
         var tableName = configuration["Azure:TableStorage:FactsTableName"] ?? "facts";
         _tableClient = tableServiceClient.GetTableClient(tableName);
@@ -55,9 +60,29 @@ public class AzureTableScratchpadService : IScratchpadService
                     ["ConversationId"] = conversationId,
                     ["CreatedAt"] = fact.CreatedAt,
                     ["LastAccessed"] = fact.LastAccessed,
-                    ["AccessCount"] = fact.AccessCount,
-                    ["Embedding"] = JsonSerializer.Serialize(fact.Embedding)
+                    ["AccessCount"] = fact.AccessCount
                 };
+
+                // Store quantized embedding if available, otherwise full embedding
+                if (fact.IsQuantized)
+                {
+                    entity["QuantizedEmbeddingData"] = fact.QuantizedEmbeddingData;
+                    entity["QuantizedScale"] = fact.QuantizedScale;
+                    entity["QuantizedOffset"] = fact.QuantizedOffset;
+                }
+                else if (fact.Embedding != null && _quantizer != null)
+                {
+                    // Quantize on-the-fly before storage
+                    var quantized = _quantizer.Quantize(fact.Embedding);
+                    entity["QuantizedEmbeddingData"] = quantized.Data;
+                    entity["QuantizedScale"] = quantized.Scale;
+                    entity["QuantizedOffset"] = quantized.Offset;
+                }
+                else if (fact.Embedding != null)
+                {
+                    // Fallback to full embedding if no quantizer
+                    entity["Embedding"] = SerializationHelper.Serialize(fact.Embedding);
+                }
 
                 await _tableClient.UpsertEntityAsync(entity, cancellationToken: cancellationToken);
             }
@@ -101,22 +126,32 @@ public class AzureTableScratchpadService : IScratchpadService
                 if (key.Contains(queryLower, StringComparison.OrdinalIgnoreCase) ||
                     value.Contains(queryLower, StringComparison.OrdinalIgnoreCase))
                 {
-                    var embeddingJson = entity.GetString("Embedding") ?? "[]";
-                    var embedding = JsonSerializer.Deserialize<float[]>(embeddingJson) ?? Array.Empty<float>();
+                    // Use factory method and then set additional properties
+                    var fact = ExtractedFact.Create(
+                        userId: userId,
+                        conversationId: entity.GetString("ConversationId") ?? string.Empty,
+                        key: key,
+                        value: value,
+                        type: Enum.TryParse<EntityType>(entity.GetString("Type"), out var entityType) ? entityType : EntityType.Preference,
+                        importance: entity.GetDouble("Importance") ?? 0.5);
 
-                // Use factory method and  then set additional properties via reflection or methods
-                var fact = ExtractedFact.Create(
-                    userId: userId,
-                    conversationId: entity.GetString("ConversationId") ?? string.Empty,
-                    key: key,
-                    value: value,
-                    type: Enum.TryParse<EntityType>(entity.GetString("Type"), out var entityType) ? entityType : EntityType.Preference,
-                    importance: entity.GetDouble("Importance") ?? 0.5);
-
-                // Set additional properties
-                if (embedding != null) fact.SetEmbedding(embedding);
-                
-                // Note: AccessCount and LastAccessed will be updated via RecordAccess when fact is retrieved
+                    // Load quantized embedding if available
+                    if (entity.ContainsKey("QuantizedEmbeddingData"))
+                    {
+                        var quantizedData = entity.GetBinary("QuantizedEmbeddingData");
+                        var scale = (float)(entity.GetDouble("QuantizedScale") ?? 1.0f);
+                        var offset = (float)(entity.GetDouble("QuantizedOffset") ?? 0.0f);
+                        fact.SetQuantizedEmbedding(quantizedData, scale, offset);
+                    }
+                    else if (entity.ContainsKey("Embedding"))
+                    {
+                        // Backward compatibility: load full embedding
+                        var embeddingJson = entity.GetString("Embedding") ?? "[]";
+                        var embedding = SerializationHelper.Deserialize<float[]>(embeddingJson);
+                        if (embedding != null) fact.SetEmbedding(embedding);
+                    }
+                    
+                    facts.Add(fact);
                 }
             }
 

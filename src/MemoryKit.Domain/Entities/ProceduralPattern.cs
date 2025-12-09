@@ -164,7 +164,27 @@ public record PatternTrigger
     public required string Pattern { get; init; }
 
     /// <summary>
-    /// Gets the embedding vector for semantic triggers.
+    /// Gets the embedding vector for semantic triggers (uncompressed).
     /// </summary>
     public float[]? Embedding { get; init; }
+
+    /// <summary>
+    /// Gets the quantized embedding data (compressed, Int8 format).
+    /// </summary>
+    public byte[]? QuantizedEmbeddingData { get; init; }
+
+    /// <summary>
+    /// Gets the scale factor for quantized embedding reconstruction.
+    /// </summary>
+    public float? QuantizedScale { get; init; }
+
+    /// <summary>
+    /// Gets the offset for quantized embedding reconstruction.
+    /// </summary>
+    public float? QuantizedOffset { get; init; }
+
+    /// <summary>
+    /// Indicates whether this trigger uses quantized embeddings.
+    /// </summary>
+    public bool IsQuantized => QuantizedEmbeddingData != null;
 }

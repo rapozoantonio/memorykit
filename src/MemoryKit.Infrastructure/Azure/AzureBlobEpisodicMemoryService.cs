@@ -5,6 +5,8 @@ using Azure.Search.Documents.Models;
 using Azure.Storage.Blobs;
 using MemoryKit.Domain.Entities;
 using MemoryKit.Domain.Interfaces;
+using MemoryKit.Infrastructure.Compression;
+using MemoryKit.Infrastructure.Serialization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -19,14 +21,17 @@ public class AzureBlobEpisodicMemoryService : IEpisodicMemoryService
     private readonly BlobContainerClient _containerClient;
     private readonly SearchClient _searchClient;
     private readonly ILogger<AzureBlobEpisodicMemoryService> _logger;
+    private readonly ICompressionService? _compressionService;
 
     public AzureBlobEpisodicMemoryService(
         BlobServiceClient blobServiceClient,
         SearchClient searchClient,
         IConfiguration configuration,
-        ILogger<AzureBlobEpisodicMemoryService> logger)
+        ILogger<AzureBlobEpisodicMemoryService> logger,
+        ICompressionService? compressionService = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _compressionService = compressionService;
 
         var containerName = configuration["Azure:Storage:ContainerName"] ?? "conversations";
         _containerClient = blobServiceClient.GetBlobContainerClient(containerName);
@@ -49,9 +54,22 @@ public class AzureBlobEpisodicMemoryService : IEpisodicMemoryService
             var blobName = $"{message.UserId}/{message.ConversationId}/{message.Id}.json";
             var blobClient = _containerClient.GetBlobClient(blobName);
 
-            var json = JsonSerializer.Serialize(message);
+            var json = SerializationHelper.Serialize(message);
+            
+            // Compress before uploading to blob storage (Brotli for best compression ratio)
+            BinaryData data;
+            if (_compressionService != null)
+            {
+                var compressed = await _compressionService.CompressAsync(json, cancellationToken);
+                data = BinaryData.FromBytes(compressed);
+            }
+            else
+            {
+                data = BinaryData.FromString(json);
+            }
+
             await blobClient.UploadAsync(
-                BinaryData.FromString(json),
+                data,
                 overwrite: true,
                 cancellationToken: cancellationToken);
 
@@ -120,7 +138,21 @@ public class AzureBlobEpisodicMemoryService : IEpisodicMemoryService
                     if (await blobClient.ExistsAsync(cancellationToken))
                     {
                         var content = await blobClient.DownloadContentAsync(cancellationToken);
-                        var message = JsonSerializer.Deserialize<Message>(content.Value.Content.ToString());
+                        
+                        // Decompress if compression service is configured
+                        string json;
+                        if (_compressionService != null)
+                        {
+                            json = await _compressionService.DecompressToStringAsync(
+                                content.Value.Content.ToArray(),
+                                cancellationToken);
+                        }
+                        else
+                        {
+                            json = content.Value.Content.ToString();
+                        }
+
+                        var message = SerializationHelper.Deserialize<Message>(json);
 
                         if (message != null)
                             messages.Add(message);
@@ -166,7 +198,21 @@ public class AzureBlobEpisodicMemoryService : IEpisodicMemoryService
                     if (await blobClient.ExistsAsync(cancellationToken))
                     {
                         var content = await blobClient.DownloadContentAsync(cancellationToken);
-                        return JsonSerializer.Deserialize<Message>(content.Value.Content.ToString());
+                        
+                        // Decompress if compression service is configured
+                        string json;
+                        if (_compressionService != null)
+                        {
+                            json = await _compressionService.DecompressToStringAsync(
+                                content.Value.Content.ToArray(),
+                                cancellationToken);
+                        }
+                        else
+                        {
+                            json = content.Value.Content.ToString();
+                        }
+
+                        return SerializationHelper.Deserialize<Message>(json);
                     }
                 }
             }

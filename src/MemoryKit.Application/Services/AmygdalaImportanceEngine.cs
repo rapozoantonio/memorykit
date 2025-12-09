@@ -3,6 +3,7 @@ using MemoryKit.Domain.Entities;
 using MemoryKit.Domain.Enums;
 using MemoryKit.Domain.Interfaces;
 using MemoryKit.Domain.ValueObjects;
+using System.Text.RegularExpressions;
 
 namespace MemoryKit.Application.Services;
 
@@ -23,27 +24,46 @@ public class AmygdalaImportanceEngine : IAmygdalaImportanceEngine
         Message message,
         CancellationToken cancellationToken = default)
     {
-        var baseScore = CalculateBaseScore(message);
-        var emotionalWeight = CalculateEmotionalWeight(message);
-        var noveltyBoost = CalculateNoveltyBoost(message);
-        var recencyFactor = CalculateRecencyFactor(message);
+        // Calculate all signal components
+        var components = new ImportanceSignalComponents
+        {
+            DecisionLanguageScore = CalculateDecisionLanguageScore(message.Content),
+            ExplicitImportanceScore = CalculateExplicitMarkerScore(message.Content),
+            QuestionScore = CalculateQuestionScore(message.Content),
+            CodeBlockScore = CalculateCodeBlockScore(message.Content),
+            NoveltyScore = CalculateNoveltyScoreEnhanced(message),
+            SentimentScore = CalculateSentimentScore(message.Content),
+            TechnicalDepthScore = CalculateTechnicalDepthScore(message.Content),
+            ConversationContextScore = CalculateConversationContextScore(message)
+        };
 
+        // Calculate final score using geometric mean (more robust than simple weighted sum)
+        var finalScore = CalculateFinalScoreFromComponents(components);
+
+        // Map to existing ImportanceScore structure for backward compatibility
         var importance = new ImportanceScore
         {
-            BaseScore = baseScore,
-            EmotionalWeight = emotionalWeight,
-            NoveltyBoost = noveltyBoost,
-            RecencyFactor = recencyFactor
+            BaseScore = (components.DecisionLanguageScore + components.ExplicitImportanceScore + components.QuestionScore + components.CodeBlockScore) / 4.0,
+            EmotionalWeight = components.SentimentScore,
+            NoveltyBoost = components.NoveltyScore,
+            RecencyFactor = CalculateRecencyFactor(message)
         };
 
         _logger.LogDebug(
-            "Calculated importance for message {MessageId}: Final={Final:F3}, Base={Base:F3}, Emotional={Emotional:F3}, Novelty={Novelty:F3}, Recency={Recency:F3}",
+            "Calculated importance for message {MessageId}: Final={Final:F3}, " +
+            "Components=[Decision={Decision:F2}, Explicit={Explicit:F2}, Question={Question:F2}, " +
+            "Code={Code:F2}, Novelty={Novelty:F2}, Sentiment={Sentiment:F2}, " +
+            "Technical={Technical:F2}, Context={Context:F2}]",
             message.Id,
-            importance.FinalScore,
-            baseScore,
-            emotionalWeight,
-            noveltyBoost,
-            recencyFactor);
+            finalScore,
+            components.DecisionLanguageScore,
+            components.ExplicitImportanceScore,
+            components.QuestionScore,
+            components.CodeBlockScore,
+            components.NoveltyScore,
+            components.SentimentScore,
+            components.TechnicalDepthScore,
+            components.ConversationContextScore);
 
         return Task.FromResult(importance);
     }
@@ -182,6 +202,233 @@ public class AmygdalaImportanceEngine : IAmygdalaImportanceEngine
         return Math.Exp(-age.TotalHours / 24.0);
     }
 
+    #region Enhanced Signal Calculation Methods
+
+    /// <summary>
+    /// Level 1: Calculate decision language score.
+    /// </summary>
+    private double CalculateDecisionLanguageScore(string content)
+    {
+        double score = 0;
+        var lower = content.ToLowerInvariant();
+
+        // Strong decision patterns
+        var strongDecisions = new[] { "decided", "decided to", "committed", "will commit", "final decision", "i choose" };
+        if (strongDecisions.Any(d => lower.Contains(d)))
+            score += 0.50;
+
+        // Weak decision patterns
+        var weakDecisions = new[] { "consider", "thinking about", "maybe", "might", "considering" };
+        if (weakDecisions.Any(w => lower.Contains(w)))
+            score += 0.15;
+
+        // Future commitment language
+        if (lower.Contains(" will ") || lower.Contains("going to") || lower.Contains("plan to"))
+            score += 0.25;
+
+        return Math.Min(score, 1.0);
+    }
+
+    /// <summary>
+    /// Level 1: Calculate explicit importance marker score.
+    /// </summary>
+    private double CalculateExplicitMarkerScore(string content)
+    {
+        double score = 0;
+        var lower = content.ToLowerInvariant();
+
+        // Critical markers
+        var critical = new[] { "critical", "crucial", "essential", "must", "required", "vital" };
+        if (critical.Any(c => lower.Contains(c)))
+            score += 0.60;
+
+        // Important markers
+        var important = new[] { "important", "remember", "note that", "key point", "significant" };
+        if (important.Any(i => lower.Contains(i)))
+            score += 0.40;
+
+        // Emphasis markers
+        var emphasis = new[] { "don't forget", "important to note", "remember to", "take note", "pay attention" };
+        if (emphasis.Any(e => lower.Contains(e)))
+            score += 0.35;
+
+        return Math.Min(score, 1.0);
+    }
+
+    /// <summary>
+    /// Level 1: Calculate question score.
+    /// </summary>
+    private double CalculateQuestionScore(string content)
+    {
+        if (!content.TrimEnd().EndsWith("?"))
+            return 0.05; // Slight boost for clarifying statements
+
+        // Decision-oriented questions are more important
+        if (Regex.IsMatch(content, @"(should|must|will|can|could|may)\s", RegexOptions.IgnoreCase))
+            return 0.40;
+
+        // Factual questions are moderately important
+        return 0.20;
+    }
+
+    /// <summary>
+    /// Level 1: Calculate code block score.
+    /// </summary>
+    private double CalculateCodeBlockScore(string content)
+    {
+        // Code blocks are almost always important
+        if (content.Contains("```"))
+            return 0.60;
+
+        // Inline code
+        if (Regex.IsMatch(content, @"`[^`]+`"))
+            return 0.45;
+
+        // Code-related keywords
+        var codeKeywords = new[] { "function", "class", "method", "algorithm", "implementation" };
+        if (codeKeywords.Any(k => content.Contains(k, StringComparison.OrdinalIgnoreCase)))
+            return 0.30;
+
+        return 0;
+    }
+
+    /// <summary>
+    /// Level 2: Calculate enhanced novelty score.
+    /// </summary>
+    private double CalculateNoveltyScoreEnhanced(Message message)
+    {
+        double score = 0;
+
+        // New entities mentioned boost importance
+        var newEntities = message.Metadata.ExtractedEntities?
+            .Count(e => e.IsNovel) ?? 0;
+
+        score += Math.Min(newEntities * 0.15, 0.50);
+
+        // First message in conversation
+        if (message.Metadata.Tags?.Contains("first_message") == true)
+            score += 0.30;
+
+        // New technical terms (capitalized words that aren't common)
+        var words = message.Content.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var capitalizedWords = words.Count(w => w.Length > 3 && char.IsUpper(w[0]) && !CommonWords.Contains(w.ToLowerInvariant()));
+        score += Math.Min(capitalizedWords * 0.05, 0.20);
+
+        return Math.Min(score, 1.0);
+    }
+
+    /// <summary>
+    /// Level 2: Calculate sentiment score.
+    /// </summary>
+    private double CalculateSentimentScore(string content)
+    {
+        double score = 0;
+        var lower = content.ToLowerInvariant();
+
+        // Strong positive sentiment
+        var positive = new[] { "excellent", "perfect", "amazing", "great", "best practice", "optimal", "ideal" };
+        if (positive.Any(p => lower.Contains(p)))
+            score += 0.25;
+
+        // Strong negative sentiment (problems are important to remember)
+        var negative = new[] { "problem", "issue", "critical", "bug", "broken", "emergency", "failure", "error" };
+        if (negative.Any(n => lower.Contains(n)))
+            score += 0.35;
+
+        // Exclamation marks indicate emotional content
+        score += Math.Min(content.Count(c => c == '!') * 0.05, 0.15);
+
+        return Math.Min(score, 1.0);
+    }
+
+    /// <summary>
+    /// Level 2: Calculate technical depth score.
+    /// </summary>
+    private double CalculateTechnicalDepthScore(string content)
+    {
+        double score = 0;
+
+        // Technical vocabulary
+        var technical = new[] { "algorithm", "architecture", "optimization", "refactor", "api", "protocol", "infrastructure", "scalability" };
+        var technicalCount = technical.Count(t => content.Contains(t, StringComparison.OrdinalIgnoreCase));
+        score += Math.Min(technicalCount * 0.15, 0.40);
+
+        // Length > 200 chars suggests detailed explanation
+        if (content.Length > 200)
+            score += 0.15;
+
+        // Technical acronyms (all caps words 2-6 chars)
+        var words = content.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var acronyms = words.Count(w => w.Length >= 2 && w.Length <= 6 && w.All(char.IsUpper));
+        score += Math.Min(acronyms * 0.10, 0.20);
+
+        return Math.Min(score, 1.0);
+    }
+
+    /// <summary>
+    /// Level 3: Calculate conversation context score.
+    /// </summary>
+    private double CalculateConversationContextScore(Message message)
+    {
+        double score = 0;
+
+        // First 3 messages of conversation are context-setting, important
+        if (message.Metadata.Tags?.Contains("early_conversation") == true)
+            score += 0.15;
+
+        // Messages that reference previous decisions
+        if (Regex.IsMatch(message.Content, @"(as we discussed|as I mentioned|previously|before|earlier)"))
+            score += 0.25;
+
+        // Messages that set context for future
+        if (Regex.IsMatch(message.Content, @"(from now on|going forward|in the future|remember that)"))
+            score += 0.20;
+
+        return Math.Min(score, 1.0);
+    }
+
+    /// <summary>
+    /// Calculate final importance score using geometric mean for robustness.
+    /// </summary>
+    private double CalculateFinalScoreFromComponents(ImportanceSignalComponents components)
+    {
+        // Collect all non-zero scores
+        var scores = new[]
+        {
+            components.DecisionLanguageScore,
+            components.ExplicitImportanceScore,
+            components.QuestionScore,
+            components.CodeBlockScore,
+            components.NoveltyScore,
+            components.SentimentScore,
+            components.TechnicalDepthScore,
+            components.ConversationContextScore
+        };
+
+        var nonZeroScores = scores.Where(s => s > 0.01).ToArray(); // Threshold to avoid log(0)
+
+        if (nonZeroScores.Length == 0)
+            return 0.3; // Default low importance if no signals
+
+        // Geometric mean (more robust than arithmetic mean)
+        var product = nonZeroScores.Aggregate(1.0, (a, b) => a * b);
+        var geometricMean = Math.Pow(product, 1.0 / nonZeroScores.Length);
+
+        // Apply dampening factor to avoid over-scoring
+        var dampened = geometricMean * 0.90;
+
+        return Math.Min(dampened, 1.0);
+    }
+
+    #endregion
+
+    // Common words to exclude from novelty detection
+    private static readonly HashSet<string> CommonWords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "the", "and", "for", "with", "this", "that", "from", "have", "been",
+        "will", "would", "could", "should", "about", "which", "their", "there"
+    };
+
     // Pattern definitions
     private static readonly string[] DecisionPatterns = new[]
     {
@@ -207,4 +454,19 @@ public class AmygdalaImportanceEngine : IAmygdalaImportanceEngine
         "problem", "issue", "error", "bug", "fail", "wrong",
         "broken", "crash", "urgent", "critical", "emergency"
     };
+}
+
+/// <summary>
+/// Represents detailed signal components for importance scoring.
+/// </summary>
+public record ImportanceSignalComponents
+{
+    public double DecisionLanguageScore { get; init; }
+    public double ExplicitImportanceScore { get; init; }
+    public double QuestionScore { get; init; }
+    public double CodeBlockScore { get; init; }
+    public double NoveltyScore { get; init; }
+    public double SentimentScore { get; init; }
+    public double TechnicalDepthScore { get; init; }
+    public double ConversationContextScore { get; init; }
 }

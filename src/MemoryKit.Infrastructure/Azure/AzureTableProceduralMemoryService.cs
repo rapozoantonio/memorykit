@@ -3,6 +3,7 @@ using Azure.Data.Tables;
 using MemoryKit.Domain.Entities;
 using MemoryKit.Domain.Enums;
 using MemoryKit.Domain.Interfaces;
+using MemoryKit.Infrastructure.Serialization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -52,7 +53,7 @@ public class AzureTableProceduralMemoryService : IProceduralMemoryService
             await foreach (var entity in queryResult)
             {
                 var patternJson = entity.GetString("Pattern") ?? "{}";
-                var pattern = JsonSerializer.Deserialize<ProceduralPattern>(patternJson);
+                var pattern = SerializationHelper.Deserialize<ProceduralPattern>(patternJson);
 
                 if (pattern != null)
                 {
@@ -94,7 +95,7 @@ public class AzureTableProceduralMemoryService : IProceduralMemoryService
             var entity = new TableEntity(pattern.UserId, pattern.Id)
             {
                 ["Name"] = pattern.Name,
-                ["Pattern"] = JsonSerializer.Serialize(pattern),
+                ["Pattern"] = SerializationHelper.Serialize(pattern),
                 ["CreatedAt"] = pattern.CreatedAt,
                 ["LastUsed"] = pattern.LastUsed,
                 ["UsageCount"] = pattern.UsageCount
@@ -188,7 +189,7 @@ public class AzureTableProceduralMemoryService : IProceduralMemoryService
             await foreach (var entity in queryResult)
             {
                 var patternJson = entity.GetString("Pattern") ?? "{}";
-                var pattern = JsonSerializer.Deserialize<ProceduralPattern>(patternJson);
+                var pattern = SerializationHelper.Deserialize<ProceduralPattern>(patternJson);
 
                 if (pattern != null)
                     patterns.Add(pattern);
