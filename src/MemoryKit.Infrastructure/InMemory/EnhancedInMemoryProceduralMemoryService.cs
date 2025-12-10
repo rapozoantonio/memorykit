@@ -58,9 +58,16 @@ public class EnhancedInMemoryProceduralMemoryService : IProceduralMemoryService
         ProceduralPattern? bestMatch = null;
         double bestScore = 0;
 
+        // Take snapshot and sort outside lock for better concurrency
+        List<ProceduralPattern> patternsCopy;
         lock (_lock)
         {
-            foreach (var pattern in userPatterns.OrderByDescending(p => p.UsageCount))
+            patternsCopy = userPatterns.ToList();
+        }
+
+        var sortedPatterns = patternsCopy.OrderByDescending(p => p.UsageCount).ToList();
+
+        foreach (var pattern in sortedPatterns)
             {
                 foreach (var trigger in pattern.Triggers)
                 {
@@ -115,21 +122,25 @@ public class EnhancedInMemoryProceduralMemoryService : IProceduralMemoryService
                 }
             }
 
-            if (bestMatch != null)
+        // Only lock for the write operation
+        if (bestMatch != null)
+        {
+            lock (_lock)
             {
                 bestMatch.RecordUsage();
-                _logger.LogInformation(
-                    "Matched pattern '{PatternName}' with score {Score:F3} (used {UsageCount} times)",
-                    bestMatch.Name,
-                    bestScore,
-                    bestMatch.UsageCount);
             }
-        }
 
-        // Trigger pattern consolidation OUTSIDE the lock to avoid race condition
-        if (bestMatch != null && bestMatch.UsageCount % 10 == 0) // Only consolidate every 10 uses
-        {
-            _ = TriggerConsolidationAsync(userId);
+            _logger.LogInformation(
+                "Matched pattern '{PatternName}' with score {Score:F3} (used {UsageCount} times)",
+                bestMatch.Name,
+                bestScore,
+                bestMatch.UsageCount);
+
+            // Trigger pattern consolidation (throttled)
+            if (bestMatch.UsageCount % 10 == 0)
+            {
+                _ = TriggerConsolidationAsync(userId);
+            }
         }
 
         return bestMatch;
@@ -541,22 +552,41 @@ Return ONLY valid JSON array. If no patterns found, return empty array [].";
     }
 
     /// <summary>
-    /// Calculates string similarity using Levenshtein distance.
+    /// Calculates string similarity using Levenshtein distance with pre-filtering.
     /// </summary>
     private double CalculateStringSimilarity(string s1, string s2)
     {
-        var distance = LevenshteinDistance(s1, s2);
         var maxLength = Math.Max(s1.Length, s2.Length);
-        return maxLength == 0 ? 1.0 : 1.0 - (double)distance / maxLength;
+        if (maxLength == 0)
+            return 1.0;
+
+        // Fast pre-filter: if length difference > 30%, skip expensive calculation
+        var lengthDiff = Math.Abs(s1.Length - s2.Length);
+        if (lengthDiff > maxLength * 0.3)
+            return 0.0;
+
+        var distance = LevenshteinDistance(s1, s2);
+        return 1.0 - (double)distance / maxLength;
     }
 
     /// <summary>
-    /// Calculates Levenshtein distance between two strings.
+    /// Calculates Levenshtein distance between two strings with optimizations.
     /// </summary>
     private int LevenshteinDistance(string s1, string s2)
     {
+        // Early exit for identical strings
+        if (s1 == s2)
+            return 0;
+
         var m = s1.Length;
         var n = s2.Length;
+
+        // Early exit for empty strings
+        if (m == 0)
+            return n;
+        if (n == 0)
+            return m;
+
         var d = new int[m + 1, n + 1];
 
         for (int i = 0; i <= m; i++)

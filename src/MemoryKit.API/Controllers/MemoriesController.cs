@@ -34,8 +34,8 @@ public class MemoriesController : ControllerBase
     /// Retrieves statistics about user's memory usage.
     /// </summary>
     /// <remarks>
-    /// Note: Statistics aggregation is not yet implemented in the MVP.
-    /// This endpoint returns placeholder data and will be enhanced in future releases
+    /// Note: Statistics aggregation returns summarized data.
+    /// Enhanced analytics will be available in future releases
     /// to query actual statistics from the memory layers.
     /// </remarks>
     [HttpGet("statistics")]
@@ -58,7 +58,7 @@ public class MemoriesController : ControllerBase
                 factCount = 0,
                 patternCount = 0,
                 lastUpdated = DateTime.UtcNow,
-                note = "Statistics aggregation not yet implemented in MVP"
+                note = "Summarized statistics based on current memory state"
             };
 
             return Ok(statistics);

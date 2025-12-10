@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 namespace MemoryKit.Infrastructure.InMemory;
 
 /// <summary>
-/// In-memory Working Memory Service implementation for MVP/testing.
+/// In-memory Working Memory Service implementation.
 /// Implements Layer 3 (L3) - Hot context for active conversations with TTL-based cleanup.
 /// </summary>
 public class InMemoryWorkingMemoryService : IWorkingMemoryService
@@ -24,14 +24,12 @@ public class InMemoryWorkingMemoryService : IWorkingMemoryService
         _logger = logger;
     }
 
-    public async Task AddAsync(
+    public Task AddAsync(
         string userId,
         string conversationId,
         Message message,
         CancellationToken cancellationToken = default)
     {
-        await Task.Delay(1, cancellationToken); // Simulate async
-
         lock (_lock)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -55,11 +53,12 @@ public class InMemoryWorkingMemoryService : IWorkingMemoryService
             {
                 // Remove least important oldest message
                 var toRemove = _storage[key].Messages
-                    .OrderBy(m => m.Metadata.ImportanceScore)
-                    .ThenBy(m => m.Timestamp)
-                    .First();
+                    .MinBy(m => (m.Metadata.ImportanceScore, m.Timestamp));
 
-                _storage[key].Messages.Remove(toRemove);
+                if (toRemove != null)
+                {
+                    _storage[key].Messages.Remove(toRemove);
+                }
             }
 
             _logger.LogDebug(
@@ -70,16 +69,16 @@ public class InMemoryWorkingMemoryService : IWorkingMemoryService
             // Periodic cleanup
             PerformPeriodicCleanup();
         }
+
+        return Task.CompletedTask;
     }
 
-    public async Task<Message[]> GetRecentAsync(
+    public Task<Message[]> GetRecentAsync(
         string userId,
         string conversationId,
         int count = 10,
         CancellationToken cancellationToken = default)
     {
-        await Task.Delay(1, cancellationToken);
-
         lock (_lock)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -88,26 +87,24 @@ public class InMemoryWorkingMemoryService : IWorkingMemoryService
 
             if (!_storage.ContainsKey(key))
             {
-                return Array.Empty<Message>();
+                return Task.FromResult(Array.Empty<Message>());
             }
 
             _storage[key].LastAccessed = DateTime.UtcNow;
 
-            return _storage[key].Messages
+            return Task.FromResult(_storage[key].Messages
                 .OrderByDescending(m => m.Timestamp)
                 .Take(count)
                 .OrderBy(m => m.Timestamp)
-                .ToArray();
+                .ToArray());
         }
     }
 
-    public async Task ClearAsync(
+    public Task ClearAsync(
         string userId,
         string conversationId,
         CancellationToken cancellationToken = default)
     {
-        await Task.Delay(1, cancellationToken);
-
         lock (_lock)
         {
             var key = GetKey(userId, conversationId);
@@ -115,6 +112,8 @@ public class InMemoryWorkingMemoryService : IWorkingMemoryService
 
             _logger.LogDebug("Cleared working memory for conversation: {ConversationId}", conversationId);
         }
+
+        return Task.CompletedTask;
     }
 
     public async Task DeleteUserDataAsync(
@@ -212,7 +211,7 @@ public class InMemoryWorkingMemoryService : IWorkingMemoryService
 }
 
 /// <summary>
-/// In-memory Scratchpad Service implementation for MVP/testing.
+/// In-memory Scratchpad Service implementation.
 /// Implements Layer 2 (L2) - Semantic memory with extracted facts.
 /// </summary>
 public class InMemoryScratchpadService : IScratchpadService
@@ -226,14 +225,12 @@ public class InMemoryScratchpadService : IScratchpadService
         _logger = logger;
     }
 
-    public async Task StoreFactsAsync(
+    public Task StoreFactsAsync(
         string userId,
         string conversationId,
         ExtractedFact[] facts,
         CancellationToken cancellationToken = default)
     {
-        await Task.Delay(1, cancellationToken);
-
         lock (_lock)
         {
             if (!_storage.ContainsKey(userId))
@@ -248,28 +245,28 @@ public class InMemoryScratchpadService : IScratchpadService
                 facts.Length,
                 userId);
         }
+
+        return Task.CompletedTask;
     }
 
-    public async Task<ExtractedFact[]> SearchFactsAsync(
+    public Task<ExtractedFact[]> SearchFactsAsync(
         string userId,
         string query,
         int maxResults = 20,
         CancellationToken cancellationToken = default)
     {
-        await Task.Delay(1, cancellationToken);
-
         lock (_lock)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
             if (!_storage.ContainsKey(userId))
             {
-                return Array.Empty<ExtractedFact>();
+                return Task.FromResult(Array.Empty<ExtractedFact>());
             }
 
             var queryLower = query.ToLowerInvariant();
 
-            // Simple keyword matching (in production, use vector similarity)
+            // Simple keyword matching
             var results = _storage[userId]
                 .Where(f =>
                     f.Key.Contains(queryLower, StringComparison.OrdinalIgnoreCase) ||
@@ -284,13 +281,12 @@ public class InMemoryScratchpadService : IScratchpadService
                 results.Length,
                 query);
 
-            return results;
+            return Task.FromResult(results);
         }
     }
 
-    public async Task RecordAccessAsync(string factId, CancellationToken cancellationToken = default)
+    public Task RecordAccessAsync(string factId, CancellationToken cancellationToken = default)
     {
-        await Task.Delay(1, cancellationToken);
 
         lock (_lock)
         {
@@ -306,11 +302,12 @@ public class InMemoryScratchpadService : IScratchpadService
                 }
             }
         }
+
+        return Task.CompletedTask;
     }
 
-    public async Task PruneAsync(string userId, CancellationToken cancellationToken = default)
+    public Task PruneAsync(string userId, CancellationToken cancellationToken = default)
     {
-        await Task.Delay(1, cancellationToken);
 
         lock (_lock)
         {
@@ -318,7 +315,7 @@ public class InMemoryScratchpadService : IScratchpadService
 
             if (!_storage.ContainsKey(userId))
             {
-                return;
+                return Task.CompletedTask;
             }
 
             var ttl = TimeSpan.FromDays(30);
@@ -335,13 +332,14 @@ public class InMemoryScratchpadService : IScratchpadService
                 beforeCount - afterCount,
                 userId);
         }
+
+        return Task.CompletedTask;
     }
 
-    public async Task DeleteUserDataAsync(
+    public Task DeleteUserDataAsync(
         string userId,
         CancellationToken cancellationToken = default)
     {
-        await Task.Delay(1, cancellationToken);
 
         lock (_lock)
         {
@@ -360,11 +358,13 @@ public class InMemoryScratchpadService : IScratchpadService
                 _logger.LogDebug("No semantic memory data found for user {UserId}", userId);
             }
         }
+
+        return Task.CompletedTask;
     }
 }
 
 /// <summary>
-/// In-memory Episodic Memory Service implementation for MVP/testing.
+/// In-memory Episodic Memory Service implementation.
 /// Implements Layer 1 (L1) - Full conversation archive.
 /// </summary>
 public class InMemoryEpisodicMemoryService : IEpisodicMemoryService
@@ -379,11 +379,10 @@ public class InMemoryEpisodicMemoryService : IEpisodicMemoryService
         _logger = logger;
     }
 
-    public async Task ArchiveAsync(
+    public Task ArchiveAsync(
         Message message,
         CancellationToken cancellationToken = default)
     {
-        await Task.Delay(1, cancellationToken);
 
         lock (_lock)
         {
@@ -401,28 +400,28 @@ public class InMemoryEpisodicMemoryService : IEpisodicMemoryService
                 message.Id,
                 message.UserId);
         }
+
+        return Task.CompletedTask;
     }
 
-    public async Task<Message[]> SearchAsync(
+    public Task<Message[]> SearchAsync(
         string userId,
         string query,
         int maxResults = 5,
         CancellationToken cancellationToken = default)
     {
-        await Task.Delay(1, cancellationToken);
-
         lock (_lock)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
             if (!_messagesByUser.ContainsKey(userId))
             {
-                return Array.Empty<Message>();
+                return Task.FromResult(Array.Empty<Message>());
             }
 
             var queryLower = query.ToLowerInvariant();
 
-            // Simple keyword search (in production, use vector similarity)
+            // Simple keyword search
             var results = _messagesByUser[userId]
                 .Where(m => m.Content.Contains(queryLower, StringComparison.OrdinalIgnoreCase))
                 .OrderByDescending(m => m.Metadata.ImportanceScore)
@@ -435,26 +434,23 @@ public class InMemoryEpisodicMemoryService : IEpisodicMemoryService
                 results.Length,
                 query);
 
-            return results;
+            return Task.FromResult(results);
         }
     }
 
-    public async Task<Message?> GetAsync(string messageId, CancellationToken cancellationToken = default)
+    public Task<Message?> GetAsync(string messageId, CancellationToken cancellationToken = default)
     {
-        await Task.Delay(1, cancellationToken);
 
         lock (_lock)
         {
-            return _messagesById.TryGetValue(messageId, out var message) ? message : null;
+            return Task.FromResult(_messagesById.TryGetValue(messageId, out var message) ? message : null);
         }
     }
 
-    public async Task DeleteUserDataAsync(
+    public Task DeleteUserDataAsync(
         string userId,
         CancellationToken cancellationToken = default)
     {
-        await Task.Delay(1, cancellationToken);
-
         lock (_lock)
         {
             // Find all message IDs for this user
@@ -478,11 +474,13 @@ public class InMemoryEpisodicMemoryService : IEpisodicMemoryService
                 userId,
                 messageIdsToRemove.Count);
         }
+
+        return Task.CompletedTask;
     }
 }
 
 /// <summary>
-/// In-memory Procedural Memory Service implementation for MVP/testing.
+/// In-memory Procedural Memory Service implementation.
 /// Implements Layer P - Learned patterns and routines.
 /// </summary>
 public class InMemoryProceduralMemoryService : IProceduralMemoryService
@@ -496,18 +494,17 @@ public class InMemoryProceduralMemoryService : IProceduralMemoryService
         _logger = logger;
     }
 
-    public async Task<ProceduralPattern?> MatchPatternAsync(
+    public Task<ProceduralPattern?> MatchPatternAsync(
         string userId,
         string query,
         CancellationToken cancellationToken = default)
     {
-        await Task.Delay(1, cancellationToken);
 
         lock (_lock)
         {
             if (!_patternsByUser.ContainsKey(userId))
             {
-                return null;
+                return Task.FromResult<ProceduralPattern?>(null);
             }
 
             var queryLower = query.ToLowerInvariant();
@@ -543,16 +540,14 @@ public class InMemoryProceduralMemoryService : IProceduralMemoryService
                     bestMatch.Name);
             }
 
-            return bestMatch;
+            return Task.FromResult(bestMatch);
         }
     }
 
-    public async Task StorePatternAsync(
+    public Task StorePatternAsync(
         ProceduralPattern pattern,
         CancellationToken cancellationToken = default)
     {
-        await Task.Delay(1, cancellationToken);
-
         lock (_lock)
         {
             if (!_patternsByUser.ContainsKey(pattern.UserId))
@@ -567,6 +562,8 @@ public class InMemoryProceduralMemoryService : IProceduralMemoryService
                 pattern.Name,
                 pattern.UserId);
         }
+
+        return Task.CompletedTask;
     }
 
     public async Task DetectAndStorePatternAsync(
@@ -574,9 +571,7 @@ public class InMemoryProceduralMemoryService : IProceduralMemoryService
         Message message,
         CancellationToken cancellationToken = default)
     {
-        await Task.Delay(1, cancellationToken);
-
-        // Simple pattern detection (in production, use LLM)
+        // Simple pattern detection
         var content = message.Content.ToLowerInvariant();
 
         // Detect procedural instructions like "always...", "never...", "from now on..."
@@ -608,22 +603,21 @@ public class InMemoryProceduralMemoryService : IProceduralMemoryService
         }
     }
 
-    public async Task<ProceduralPattern[]> GetUserPatternsAsync(
+    public Task<ProceduralPattern[]> GetUserPatternsAsync(
         string userId,
         CancellationToken cancellationToken = default)
     {
-        await Task.Delay(1, cancellationToken);
 
         lock (_lock)
         {
             if (!_patternsByUser.ContainsKey(userId))
             {
-                return Array.Empty<ProceduralPattern>();
+                return Task.FromResult(Array.Empty<ProceduralPattern>());
             }
 
-            return _patternsByUser[userId]
+            return Task.FromResult(_patternsByUser[userId]
                 .OrderByDescending(p => p.UsageCount)
-                .ToArray();
+                .ToArray());
         }
     }
 

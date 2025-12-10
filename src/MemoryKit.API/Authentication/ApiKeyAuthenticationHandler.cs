@@ -51,7 +51,7 @@ public class ApiKeyAuthenticationHandler : AuthenticationHandler<AuthenticationS
             return AuthenticateResult.Fail("Invalid API Key");
         }
 
-        // Extract user ID from API key (for demo, we'll use a simple mapping)
+        // Extract user ID from API key
         var userId = GetUserIdFromApiKey(providedApiKey);
 
         // Create claims
@@ -78,7 +78,7 @@ public class ApiKeyAuthenticationHandler : AuthenticationHandler<AuthenticationS
     /// </summary>
     private async Task<bool> ValidateApiKeyAsync(string apiKey)
     {
-        // For MVP: Check against configured valid keys
+        // Check against configured valid keys
         var validKeys = _configuration.GetSection("ApiKeys:ValidKeys").Get<string[]>()
             ?? Array.Empty<string>();
 
@@ -98,7 +98,7 @@ public class ApiKeyAuthenticationHandler : AuthenticationHandler<AuthenticationS
     /// </summary>
     private string GetUserIdFromApiKey(string apiKey)
     {
-        // For MVP: Use a simple hash of the API key as user ID
+        // Use a hash of the API key as user ID
         // In production: Lookup from database/cache
         var userMappings = _configuration.GetSection("ApiKeys:UserMappings").Get<Dictionary<string, string>>()
             ?? new Dictionary<string, string>();

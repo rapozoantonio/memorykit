@@ -64,26 +64,34 @@ public class PrefrontalController : IPrefrontalController
     }
 
     /// <summary>
-    /// Quick pattern-based classification for common query types.
+    /// Quick pattern-based classification for common query types with optimized matching.
     /// </summary>
     public virtual QueryType? QuickClassify(string query)
     {
         var lower = query.ToLowerInvariant().Trim();
 
-        // Continuation patterns
+        // Continuation patterns (check prefix first - most specific)
         if (ContinuationPatterns.Any(p => lower.StartsWith(p)))
             return QueryType.Continuation;
 
-        // Fact retrieval patterns
-        if (FactRetrievalPatterns.Any(p => lower.Contains(p)))
+        // Tokenize once for efficient matching
+        var tokens = lower.Split(new[] { ' ', ',', '.', '!', '?', ';', ':', '\t', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        var tokenSet = new HashSet<string>(tokens);
+
+        // Check multi-word phrases directly for fact retrieval
+        if (FactRetrievalPhrases.Any(p => lower.Contains(p)))
             return QueryType.FactRetrieval;
 
-        // Deep recall patterns
+        // Check single-word tokens against fact retrieval set
+        if (tokenSet.Overlaps(FactRetrievalTokens))
+            return QueryType.FactRetrieval;
+
+        // Deep recall patterns (exact phrase matching)
         if (DeepRecallPatterns.Any(p => lower.Contains(p)))
             return QueryType.DeepRecall;
 
-        // Procedural trigger patterns
-        if (ProceduralTriggerPatterns.Any(p => lower.Contains(p)))
+        // Procedural trigger patterns (check for action tokens)
+        if (tokenSet.Overlaps(ProceduralTriggerTokens))
             return QueryType.ProceduralTrigger;
 
         return null; // Needs complex classification
@@ -228,17 +236,15 @@ public class PrefrontalController : IPrefrontalController
             score += 0.25;
 
         // Surface signal 2: Question words at start
-        var questionWords = new[] { "what", "where", "when", "who", "which", "why" };
-        if (words.Length > 0 && questionWords.Any(w => words[0] == w))
+        if (words.Length > 0 && QuestionWords.Contains(words[0]))
             score += 0.15;
 
-        // Surface signal 3: Question words anywhere
-        if (questionWords.Any(w => lower.Contains(w)))
+        // Surface signal 3: Question words anywhere (check tokens)
+        if (words.Any(w => QuestionWords.Contains(w)))
             score += 0.30;
 
-        // Surface signal 4: Retrieval verbs
-        var retrievalVerbs = new[] { "find", "show", "get", "tell me", "retrieve", "look up", "search", "remind me" };
-        if (retrievalVerbs.Any(v => lower.Contains(v)))
+        // Surface signal 4: Retrieval phrases (exact match)
+        if (RetrievalPhrases.Any(v => lower.Contains(v)))
             score += 0.25;
 
         // Surface signal 5: Length heuristic (short queries often factual)
@@ -256,14 +262,13 @@ public class PrefrontalController : IPrefrontalController
         double score = 0;
         var lower = query.ToLowerInvariant();
 
-        // Decision modals
-        var decisionModals = new[] { "should", "shall", "ought", "must", "can we", "could we" };
-        if (decisionModals.Any(m => lower.Contains(m)))
+        // Decision modals (exact phrase matching)
+        if (DecisionModals.Any(m => lower.Contains(m)))
             score += 0.40;
 
-        // Decision verbs
-        var decisionVerbs = new[] { "decide", "choose", "commit", "go with", "select", "pick", "adopt", "implement" };
-        if (decisionVerbs.Any(v => lower.Contains(v)))
+        // Decision verbs (tokenize and check)
+        var words = lower.Split(new[] { ' ', '\t', '\n', ',', '.', '!', '?' }, StringSplitOptions.RemoveEmptyEntries);
+        if (words.Any(w => DecisionVerbs.Contains(w)))
             score += 0.35;
 
         // Future commitment
@@ -586,16 +591,21 @@ public class PrefrontalController : IPrefrontalController
 
     #endregion
 
-    // Pattern definitions
+    // Pattern definitions - optimized for O(1) lookups
     private static readonly string[] ContinuationPatterns = new[]
     {
         "continue", "go on", "and then", "next", "keep going", "more"
     };
 
-    private static readonly string[] FactRetrievalPatterns = new[]
+    private static readonly string[] FactRetrievalPhrases = new[]
     {
-        "what was", "what is", "who is", "when did", "where", "how many",
+        "what was", "what is", "who is", "when did", "how many",
         "tell me about", "remind me"
+    };
+
+    private static readonly HashSet<string> FactRetrievalTokens = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "what", "where", "when", "who", "which", "why", "how"
     };
 
     private static readonly string[] DeepRecallPatterns = new[]
@@ -604,10 +614,29 @@ public class PrefrontalController : IPrefrontalController
         "show me the", "find the conversation"
     };
 
-    private static readonly string[] ProceduralTriggerPatterns = new[]
+    private static readonly HashSet<string> ProceduralTriggerTokens = new(StringComparer.OrdinalIgnoreCase)
     {
-        "write code", "create", "generate", "build", "implement",
-        "format", "structure"
+        "create", "generate", "build", "implement", "format", "structure", "write"
+    };
+
+    private static readonly HashSet<string> QuestionWords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "what", "where", "when", "who", "which", "why"
+    };
+
+    private static readonly string[] RetrievalPhrases = new[]
+    {
+        "find", "show", "get", "tell me", "retrieve", "look up", "search", "remind me"
+    };
+
+    private static readonly string[] DecisionModals = new[]
+    {
+        "should", "shall", "ought", "must", "can we", "could we"
+    };
+
+    private static readonly HashSet<string> DecisionVerbs = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "decide", "choose", "commit", "select", "pick", "adopt", "implement"
     };
 }
 

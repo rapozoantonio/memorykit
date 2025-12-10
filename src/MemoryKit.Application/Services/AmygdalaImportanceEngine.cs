@@ -205,52 +205,41 @@ public class AmygdalaImportanceEngine : IAmygdalaImportanceEngine
     #region Enhanced Signal Calculation Methods
 
     /// <summary>
-    /// Level 1: Calculate decision language score.
+    /// Level 1: Calculate decision language score with optimized single-pass matching.
     /// </summary>
     private double CalculateDecisionLanguageScore(string content)
     {
-        double score = 0;
         var lower = content.ToLowerInvariant();
 
-        // Strong decision patterns
-        var strongDecisions = new[] { "decided", "decided to", "committed", "will commit", "final decision", "i choose" };
-        if (strongDecisions.Any(d => lower.Contains(d)))
-            score += 0.50;
-
-        // Weak decision patterns
-        var weakDecisions = new[] { "consider", "thinking about", "maybe", "might", "considering" };
-        if (weakDecisions.Any(w => lower.Contains(w)))
-            score += 0.15;
-
-        // Future commitment language
-        if (lower.Contains(" will ") || lower.Contains("going to") || lower.Contains("plan to"))
-            score += 0.25;
+        // Single pass through decision patterns with weights
+        double score = 0;
+        foreach (var (pattern, weight) in DecisionPatternsWeighted)
+        {
+            if (lower.Contains(pattern))
+            {
+                score = Math.Max(score, weight); // Take highest matching weight
+            }
+        }
 
         return Math.Min(score, 1.0);
     }
 
     /// <summary>
-    /// Level 1: Calculate explicit importance marker score.
+    /// Level 1: Calculate explicit importance marker score with optimized single-pass matching.
     /// </summary>
     private double CalculateExplicitMarkerScore(string content)
     {
-        double score = 0;
         var lower = content.ToLowerInvariant();
 
-        // Critical markers
-        var critical = new[] { "critical", "crucial", "essential", "must", "required", "vital" };
-        if (critical.Any(c => lower.Contains(c)))
-            score += 0.60;
-
-        // Important markers
-        var important = new[] { "important", "remember", "note that", "key point", "significant" };
-        if (important.Any(i => lower.Contains(i)))
-            score += 0.40;
-
-        // Emphasis markers
-        var emphasis = new[] { "don't forget", "important to note", "remember to", "take note", "pay attention" };
-        if (emphasis.Any(e => lower.Contains(e)))
-            score += 0.35;
+        // Single pass through importance markers with weights
+        double score = 0;
+        foreach (var (marker, weight) in ImportanceMarkersWeighted)
+        {
+            if (lower.Contains(marker))
+            {
+                score = Math.Max(score, weight); // Take highest matching weight
+            }
+        }
 
         return Math.Min(score, 1.0);
     }
@@ -272,22 +261,25 @@ public class AmygdalaImportanceEngine : IAmygdalaImportanceEngine
     }
 
     /// <summary>
-    /// Level 1: Calculate code block score.
+    /// Level 1: Calculate code block score with optimized single-pass matching.
     /// </summary>
     private double CalculateCodeBlockScore(string content)
     {
-        // Code blocks are almost always important
+        // Code blocks are almost always important (check first)
         if (content.Contains("```"))
             return 0.60;
 
         // Inline code
-        if (Regex.IsMatch(content, @"`[^`]+`"))
+        if (content.Contains('`') && Regex.IsMatch(content, @"`[^`]+`"))
             return 0.45;
 
-        // Code-related keywords
-        var codeKeywords = new[] { "function", "class", "method", "algorithm", "implementation" };
-        if (codeKeywords.Any(k => content.Contains(k, StringComparison.OrdinalIgnoreCase)))
-            return 0.30;
+        // Code-related keywords - single pass
+        var lower = content.ToLowerInvariant();
+        foreach (var keyword in CodeKeywords)
+        {
+            if (lower.Contains(keyword))
+                return 0.30;
+        }
 
         return 0;
     }
@@ -453,6 +445,31 @@ public class AmygdalaImportanceEngine : IAmygdalaImportanceEngine
     {
         "problem", "issue", "error", "bug", "fail", "wrong",
         "broken", "crash", "urgent", "critical", "emergency"
+    };
+
+    // Optimized weighted patterns for single-pass scoring
+    private static readonly (string Pattern, double Weight)[] DecisionPatternsWeighted = new[]
+    {
+        ("decided", 0.50), ("decided to", 0.50), ("committed", 0.50),
+        ("will commit", 0.50), ("final decision", 0.50), ("i choose", 0.50),
+        (" will ", 0.25), ("going to", 0.25), ("plan to", 0.25),
+        ("consider", 0.15), ("thinking about", 0.15), ("maybe", 0.15),
+        ("might", 0.15), ("considering", 0.15)
+    };
+
+    private static readonly (string Marker, double Weight)[] ImportanceMarkersWeighted = new[]
+    {
+        ("critical", 0.60), ("crucial", 0.60), ("essential", 0.60),
+        ("must", 0.60), ("required", 0.60), ("vital", 0.60),
+        ("important", 0.40), ("remember", 0.40), ("note that", 0.40),
+        ("key point", 0.40), ("significant", 0.40),
+        ("don't forget", 0.35), ("important to note", 0.35),
+        ("remember to", 0.35), ("take note", 0.35), ("pay attention", 0.35)
+    };
+
+    private static readonly string[] CodeKeywords = new[]
+    {
+        "function", "class", "method", "algorithm", "implementation"
     };
 }
 

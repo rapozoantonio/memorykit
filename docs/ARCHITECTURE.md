@@ -43,7 +43,7 @@ Implements external dependencies and technical concerns:
 - **Azure**: Azure services (Redis, Table Storage, Blob, AI Search)
 - **SemanticKernel**: Integration with Azure OpenAI and embeddings
 - **Cognitive**: Neuroscience-inspired services (Amygdala, Hippocampus, Prefrontal Controller)
-- **InMemory**: In-memory implementations for testing and MVP
+- **InMemory**: In-memory implementations for testing and development
 
 Key principles:
 - Depends on Domain and Application layers

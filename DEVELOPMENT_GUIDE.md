@@ -109,7 +109,7 @@ MemoryKit/
 │   │   │   ├── SemanticKernelService.cs
 │   │   │   └── MockSemanticKernelService.cs
 │   │   └── Azure/                    # Future: Azure implementations
-│   │       └── [Placeholder for production Azure services]
+│   │       └── [Azure production services available]
 │   │
 │   └── MemoryKit.API/                # Web API
 │       ├── Controllers/

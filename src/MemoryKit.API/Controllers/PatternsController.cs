@@ -25,7 +25,7 @@ public class PatternsController : ControllerBase
     /// <summary>
     /// Lists all procedural patterns for the user with analytics.
     /// </summary>
-    /// <param name="userId">User ID (defaults to 'demo' for MVP)</param>
+    /// <param name="userId">User ID</param>
     /// <param name="cancellationToken">Cancellation token</param>
     [HttpGet]
     [ProducesResponseType(typeof(PatternAnalyticsResponse), StatusCodes.Status200OK)]

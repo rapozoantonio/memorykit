@@ -7,8 +7,8 @@ using Microsoft.Extensions.Logging;
 namespace MemoryKit.Infrastructure.SemanticKernel;
 
 /// <summary>
-/// Mock Semantic Kernel Service for MVP/testing without Azure OpenAI dependency.
-/// Replace with real Azure OpenAI integration for production.
+/// Mock Semantic Kernel Service for testing without Azure OpenAI dependency.
+/// Replace with real Azure OpenAI integration for production use.
 /// </summary>
 public class MockSemanticKernelService : ISemanticKernelService
 {

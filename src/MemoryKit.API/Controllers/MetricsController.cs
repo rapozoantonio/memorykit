@@ -69,7 +69,7 @@ public class MetricsController : ControllerBase
     }
 
     /// <summary>
-    /// Records a custom metric (for testing/admin purposes).
+    /// Records a custom metric (for admin purposes).
     /// </summary>
     [HttpPost("record")]
     [ProducesResponseType(StatusCodes.Status200OK)]
