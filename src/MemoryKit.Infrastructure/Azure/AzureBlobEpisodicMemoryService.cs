@@ -280,4 +280,10 @@ public class AzureBlobEpisodicMemoryService : IEpisodicMemoryService
             throw;
         }
     }
+
+    public Task DeleteAsync(string userId, string messageId, CancellationToken cancellationToken = default)
+    {
+        _logger.LogWarning("DeleteAsync not fully implemented for Azure Blob yet");
+        return Task.CompletedTask;
+    }
 }

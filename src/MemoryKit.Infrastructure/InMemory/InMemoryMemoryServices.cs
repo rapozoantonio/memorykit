@@ -116,6 +116,30 @@ public class InMemoryWorkingMemoryService : IWorkingMemoryService
         return Task.CompletedTask;
     }
 
+    public Task RemoveAsync(
+        string userId,
+        string conversationId,
+        string messageId,
+        CancellationToken cancellationToken = default)
+    {
+        lock (_lock)
+        {
+            var key = GetKey(userId, conversationId);
+
+            if (_storage.ContainsKey(key))
+            {
+                var message = _storage[key].Messages.FirstOrDefault(m => m.Id == messageId);
+                if (message != null)
+                {
+                    _storage[key].Messages.Remove(message);
+                    _logger.LogDebug("Removed message {MessageId} from working memory", messageId);
+                }
+            }
+        }
+
+        return Task.CompletedTask;
+    }
+
     public async Task DeleteUserDataAsync(
         string userId,
         CancellationToken cancellationToken = default)
@@ -336,6 +360,24 @@ public class InMemoryScratchpadService : IScratchpadService
         return Task.CompletedTask;
     }
 
+    public Task DeleteFactAsync(string userId, string factId, CancellationToken cancellationToken = default)
+    {
+        lock (_lock)
+        {
+            if (_storage.ContainsKey(userId))
+            {
+                var fact = _storage[userId].FirstOrDefault(f => f.Id == factId);
+                if (fact != null)
+                {
+                    _storage[userId].Remove(fact);
+                    _logger.LogDebug("Deleted fact {FactId} for user {UserId}", factId, userId);
+                }
+            }
+        }
+
+        return Task.CompletedTask;
+    }
+
     public Task DeleteUserDataAsync(
         string userId,
         CancellationToken cancellationToken = default)
@@ -445,6 +487,30 @@ public class InMemoryEpisodicMemoryService : IEpisodicMemoryService
         {
             return Task.FromResult(_messagesById.TryGetValue(messageId, out var message) ? message : null);
         }
+    }
+
+    public Task DeleteAsync(string userId, string messageId, CancellationToken cancellationToken = default)
+    {
+        lock (_lock)
+        {
+            if (_messagesById.TryGetValue(messageId, out var message))
+            {
+                // Verify the message belongs to the user
+                if (message.UserId == userId)
+                {
+                    _messagesById.Remove(messageId);
+
+                    if (_messagesByUser.ContainsKey(userId))
+                    {
+                        _messagesByUser[userId].Remove(message);
+                    }
+
+                    _logger.LogDebug("Deleted message {MessageId} from episodic memory", messageId);
+                }
+            }
+        }
+
+        return Task.CompletedTask;
     }
 
     public Task DeleteUserDataAsync(

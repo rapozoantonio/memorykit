@@ -199,3 +199,65 @@ public record DebugInfo
     /// </summary>
     public long RetrievalTimeMs { get; init; }
 }
+
+/// <summary>
+/// Response for retrieving messages from a conversation.
+/// </summary>
+public record GetMessagesResponse
+{
+    /// <summary>
+    /// Gets the conversation ID.
+    /// </summary>
+    public required string ConversationId { get; init; }
+
+    /// <summary>
+    /// Gets the messages.
+    /// </summary>
+    public required MessageResponse[] Messages { get; init; }
+
+    /// <summary>
+    /// Gets the total count of messages returned.
+    /// </summary>
+    public int Total { get; init; }
+
+    /// <summary>
+    /// Gets whether there are more messages available.
+    /// </summary>
+    public bool HasMore { get; init; }
+}
+
+/// <summary>
+/// Response for memory consolidation operation.
+/// </summary>
+public record ConsolidateMemoryResponse
+{
+    /// <summary>
+    /// Gets the timestamp when consolidation completed.
+    /// </summary>
+    public required DateTime ConsolidatedAt { get; init; }
+
+    /// <summary>
+    /// Gets the number of items processed during consolidation.
+    /// </summary>
+    public int ItemsProcessed { get; init; }
+
+    /// <summary>
+    /// Gets the number of items moved from working to semantic memory.
+    /// </summary>
+    public int WorkingToSemantic { get; init; }
+
+    /// <summary>
+    /// Gets the number of items moved from semantic to episodic memory.
+    /// </summary>
+    public int SemanticToEpisodic { get; init; }
+
+    /// <summary>
+    /// Gets the compression ratio achieved.
+    /// </summary>
+    public double CompressionRatio { get; init; }
+
+    /// <summary>
+    /// Gets the duration of consolidation in milliseconds.
+    /// </summary>
+    public long DurationMs { get; init; }
+}

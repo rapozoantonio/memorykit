@@ -75,6 +75,35 @@ services:
     profiles:
       - demo
 
+  # =============================================================================
+  # MCP Server Mode (InMemory, no Redis)
+  # =============================================================================
+  mcp-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: memorykit-api:latest
+    container_name: memorykit-mcp-api
+    ports:
+      - "5555:5555"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:5555
+      - MemoryKit__StorageProvider=InMemory
+      - ApiKeys__ValidKeys__0=mcp-local-key
+      - ApiKeys__UserMappings__mcp-local-key=mcp-user
+    networks:
+      - memorykit-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5555/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    profiles:
+      - mcp
+
 networks:
   memorykit-network:
     driver: bridge

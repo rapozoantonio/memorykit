@@ -259,4 +259,10 @@ public class AzureTableScratchpadService : IScratchpadService
             throw;
         }
     }
+
+    public Task DeleteFactAsync(string userId, string factId, CancellationToken cancellationToken = default)
+    {
+        _logger.LogWarning("DeleteFactAsync not fully implemented for Azure Table yet");
+        return Task.CompletedTask;
+    }
 }
