@@ -1,4 +1,4 @@
-import axios, { AxiosInstance } from 'axios';
+import axios, { AxiosInstance } from "axios";
 
 export class MemoryKitApiClient {
   private client: AxiosInstance;
@@ -7,32 +7,43 @@ export class MemoryKitApiClient {
     this.client = axios.create({
       baseURL: baseUrl,
       headers: {
-        'X-API-Key': apiKey,
-        'Content-Type': 'application/json'
+        "X-API-Key": apiKey,
+        "Content-Type": "application/json",
       },
-      timeout: 30000
+      timeout: 30000,
     });
   }
 
   // Conversation management
-  async createConversation(userId: string = 'mcp-user'): Promise<string> {
-    const response = await this.client.post('/api/v1/conversations', {
-      userId,
-      metadata: { source: 'mcp' }
+  async createConversation(
+    title: string = "MCP Conversation"
+  ): Promise<string> {
+    const response = await this.client.post("/api/v1/conversations", {
+      Title: title,
     });
-    return response.data.conversationId;
+    return response.data.Id;
   }
 
   // Store memory
-  async storeMessage(conversationId: string, message: {
-    role: 'user' | 'assistant';
-    content: string;
-    tags?: string[];
-  }): Promise<void> {
-    await this.client.post(
+  async storeMessage(
+    conversationId: string,
+    message: {
+      role: "user" | "assistant";
+      content: string;
+      tags?: string[];
+    }
+  ): Promise<string> {
+    // Convert role string to enum number: user=0, assistant=1
+    const roleNum = message.role === "user" ? 0 : 1;
+    const response = await this.client.post(
       `/api/v1/conversations/${conversationId}/messages`,
-      message
+      {
+        Role: roleNum,
+        Content: message.content,
+        Tags: message.tags,
+      }
     );
+    return response.data.Id;
   }
 
   // Retrieve messages
@@ -40,33 +51,36 @@ export class MemoryKitApiClient {
     conversationId: string,
     limit?: number,
     layer?: string
-  ): Promise<any[]> {
+  ): Promise<any> {
     const response = await this.client.get(
       `/api/v1/conversations/${conversationId}/messages`,
       { params: { limit, layer } }
     );
-    return response.data.messages;
+    return response.data; // Returns {Messages[], Total, HasMore}
   }
 
-  // Search memory
+  // Search/Query memory
   async searchMemory(conversationId: string, query: string): Promise<any> {
     const response = await this.client.post(
-      `/api/v1/conversations/${conversationId}/memory/query`,
-      { query, includeResponse: false }
+      `/api/v1/conversations/${conversationId}/query`,
+      { Question: query }
     );
-    return response.data;
+    return response.data; // Returns {Answer, Sources}
   }
 
   // Get context
-  async getContext(conversationId: string): Promise<string> {
+  async getContext(conversationId: string): Promise<any> {
     const response = await this.client.get(
-      `/api/v1/conversations/${conversationId}/memory/context`
+      `/api/v1/conversations/${conversationId}/context`
     );
-    return response.data.context;
+    return response.data; // Returns {Context, TotalTokens, RetrievalLatencyMs}
   }
 
   // Forget memory
-  async forgetMessage(conversationId: string, messageId: string): Promise<void> {
+  async forgetMessage(
+    conversationId: string,
+    messageId: string
+  ): Promise<void> {
     await this.client.delete(
       `/api/v1/conversations/${conversationId}/messages/${messageId}`
     );
@@ -76,8 +90,8 @@ export class MemoryKitApiClient {
   async consolidate(conversationId: string, force = false): Promise<any> {
     const response = await this.client.post(
       `/api/v1/conversations/${conversationId}/consolidate`,
-      { force }
+      { Force: force }
     );
-    return response.data;
+    return response.data; // Returns consolidation stats
   }
 }

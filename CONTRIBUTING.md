@@ -1,99 +1,116 @@
 # Contributing to MemoryKit
 
-Thank you for your interest in contributing to MemoryKit! This document provides guidelines and instructions for contributing.
+**First time here?** Jump to [Quick Start](#quick-start) to make your first contribution in 5 minutes.
 
-## Code of Conduct
+---
 
-We are committed to providing a welcoming and inspiring community for all. Please read and adhere to our Code of Conduct.
+## Quick Start
 
-## How Can I Contribute?
+```bash
+# 1. Fork and clone
+git clone https://github.com/YOUR-USERNAME/memorykit.git
+cd memorykit
 
-### Reporting Bugs
+# 2. Build and test
+dotnet restore && dotnet build
+dotnet test
 
-Before creating bug reports, please check the issue list as you might find out that you don't need to create one. When you are creating a bug report, please include as many details as possible:
+# 3. Make changes and submit
+git checkout -b feature/your-feature
+# ... make your changes ...
+git push origin feature/your-feature
+# Open PR on GitHub
+```
 
-* **Use a clear and descriptive title**
-* **Describe the exact steps which reproduce the problem**
-* **Provide specific examples to demonstrate the steps**
-* **Describe the behavior you observed after following the steps**
-* **Describe the expected behavior**
-* **Include screenshots and animated GIFs if possible**
-* **Include your environment details**
+**That's it!** See below for detailed guidelines.
 
-### Suggesting Enhancements
+---
 
-Enhancement suggestions are tracked as GitHub issues. When creating an enhancement suggestion, please include:
+## How to Contribute
 
-* **Use a clear and descriptive title**
-* **Provide a step-by-step description of the suggested enhancement**
-* **Provide specific examples to demonstrate the steps**
-* **Describe the current behavior and the expected behavior**
-* **Explain why this enhancement would be useful**
+### Report a Bug
 
-### Pull Requests
+**Before reporting:** Search [existing issues](https://github.com/rapozoantonio/memorykit/issues) to avoid duplicates.
 
-* Fill in the required template
-* Follow the C# styleguides
-* Include appropriate test cases
-* End all files with a newline
-* Update documentation accordingly
+**Required information:**
+
+| Field                  | Description                      |
+| ---------------------- | -------------------------------- |
+| **Title**              | Clear, descriptive summary       |
+| **Steps to reproduce** | Exact steps (numbered list)      |
+| **Expected behavior**  | What should happen               |
+| **Actual behavior**    | What actually happens            |
+| **Environment**        | OS, .NET version, Docker version |
+| **Screenshots**        | If applicable                    |
+
+**Use our [bug report template](https://github.com/rapozoantonio/memorykit/issues/new?template=bug_report.md)** for guidance.
+
+### Suggest a Feature
+
+Use our [feature request template](https://github.com/rapozoantonio/memorykit/issues/new?template=feature_request.md).
+
+**Include:**
+
+- Problem it solves
+- Proposed solution
+- Use cases
+- Example API (if applicable)
+
+### Submit a Pull Request
+
+**Checklist:**
+
+- [ ] Tests pass: `dotnet test`
+- [ ] No warnings: `dotnet build /warnaserror`
+- [ ] CHANGELOG.md updated
+- [ ] Documentation updated (if needed)
+- [ ] PR template filled out
+
+See [Pull Request Process](#pull-request-process) for details.
 
 ## Development Setup
 
 ### Prerequisites
 
-* .NET 9.0 SDK or later
-* Visual Studio 2022, Visual Studio Code, or JetBrains Rider
-* Git
+- [.NET 9.0 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
+- Code editor (VS 2022 / VS Code / Rider)
+- Git
 
-### Getting Started
-
-1. Fork the repository
-2. Clone your fork locally:
-   ```bash
-   git clone https://github.com/your-username/memorykit.git
-   cd memorykit
-   ```
-3. Add upstream remote:
-   ```bash
-   git remote add upstream https://github.com/antoniorapozo/memorykit.git
-   ```
-4. Create a feature branch:
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
-
-### Building
+### Commands
 
 ```bash
+# Build
 dotnet build
-```
 
-### Running Tests
-
-```bash
+# Run tests
 dotnet test
+
+# Run specific test
+dotnet test --filter "FullyQualifiedName~YourTestName"
+
+# Build without warnings
+dotnet build /warnaserror
 ```
 
 ### Code Style
 
-We follow the C# coding guidelines and conventions. Key points:
+| Rule              | Example                                                  |
+| ----------------- | -------------------------------------------------------- |
+| **Naming**        | PascalCase for classes/methods, camelCase for parameters |
+| **Async**         | Always suffix with `Async`, use `CancellationToken`      |
+| **Documentation** | XML comments on all public members                       |
+| **Architecture**  | Keep Domain layer pure (no external dependencies)        |
+| **SOLID**         | Follow SOLID principles                                  |
 
-* Use meaningful names for variables, methods, and classes
-* Follow SOLID principles
-* Write clean, readable code
-* Add XML documentation comments to public members
-* Use async/await for I/O operations
-
-Example:
+**Example:**
 
 ```csharp
 /// <summary>
 /// Retrieves context for a given query.
 /// </summary>
+/// <param name="query">The user's query text</param>
+/// <param name="cancellationToken">Cancellation token</param>
 public async Task<MemoryContext> RetrieveContextAsync(
-    string userId,
-    string conversationId,
     string query,
     CancellationToken cancellationToken = default)
 {
@@ -103,15 +120,21 @@ public async Task<MemoryContext> RetrieveContextAsync(
 
 ## Commit Messages
 
-* Use the present tense ("Add feature" not "Added feature")
-* Use the imperative mood ("Move cursor to..." not "Moves cursor to...")
-* Limit the first line to 72 characters or less
-* Reference issues and pull requests liberally after the first line
+**Format:** `<type>(<scope>): <subject>`
 
-Example:
+| Type       | Use For                 |
+| ---------- | ----------------------- |
+| `feat`     | New feature             |
+| `fix`      | Bug fix                 |
+| `docs`     | Documentation           |
+| `test`     | Tests                   |
+| `refactor` | Code refactoring        |
+| `perf`     | Performance improvement |
+
+**Example:**
 
 ```
-Add support for semantic pattern matching
+feat(memory): add semantic pattern matching
 
 - Implement semantic trigger type in ProceduralPattern
 - Add vector-based pattern matching logic
@@ -124,10 +147,10 @@ Closes #123
 
 Use the following branch naming convention:
 
-* `feature/description-of-feature` - for new features
-* `bugfix/description-of-bug` - for bug fixes
-* `docs/description-of-docs` - for documentation changes
-* `refactor/description-of-refactor` - for refactoring
+- `feature/description-of-feature` - for new features
+- `bugfix/description-of-bug` - for bug fixes
+- `docs/description-of-docs` - for documentation changes
+- `refactor/description-of-refactor` - for refactoring
 
 ## Pull Request Process
 
@@ -137,38 +160,48 @@ Use the following branch naming convention:
 4. Ensure code builds without warnings: `dotnet build /warnaserror`
 5. Create a pull request with a clear description
 
-## Additional Notes
+## Architecture Guide
 
-### Architecture
+MemoryKit uses **Clean Architecture** with strict dependency rules:
 
-Please familiarize yourself with the Clean Architecture approach used in this project:
+```
+API → Application → Domain ← Infrastructure
+```
 
-* **Domain Layer**: Core business logic and entities
-* **Application Layer**: Use cases, CQRS, validation
-* **Infrastructure Layer**: External service implementations
-* **Presentation Layer**: API controllers and HTTP handling
+| Layer              | Purpose              | Dependencies |
+| ------------------ | -------------------- | ------------ |
+| **Domain**         | Core logic, entities | ❌ None      |
+| **Application**    | Use cases, CQRS      | Domain only  |
+| **Infrastructure** | Azure, Redis, AI     | Domain only  |
+| **API**            | REST endpoints       | All layers   |
 
-### Testing
+**Key Rule:** Domain has ZERO external dependencies.
 
-We aim for high test coverage. Please include tests for:
+📖 See [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md) for details.
 
-* New features
-* Bug fixes
-* Edge cases
+## Testing
 
-Test naming convention: `{MethodName}_{Scenario}_{Expected}`
+**Naming:** `{MethodName}_{Scenario}_{Expected}`
 
-Example: `RetrieveContext_WithValidQuery_ReturnsMemoryContext`
+**Example:** `RetrieveContext_WithValidQuery_ReturnsMemoryContext`
 
-## Recognition
+**Test types:**
 
-Contributors will be recognized in:
-* The project README
-* Release notes
-* GitHub contributors page
+- Unit tests: Test individual components
+- Integration tests: Test component interactions
+- Benchmark tests: Performance validation
 
-## Questions?
+**Coverage:** Aim for >80% on new code.
 
-Feel free to open an issue with your questions or contact the maintainers.
+## Pull Request Process
 
-Thank you for contributing to MemoryKit! 🎉
+1. **Branch:** Create from `main` using naming convention below
+2. **Code:** Make changes, add tests, update docs
+3. **Verify:** Run `dotnet test` and `dotnet build /warnaserror`
+4. **Commit:** Follow commit message format above
+5. **Push:** Push to your fork
+6. **PR:** Create PR with template, link issues
+
+### Branch Naming
+
+| Type | Format | Example |\n|------|--------|--------|\n| Feature | `feature/description` | `feature/semantic-search` |\n| Bug fix | `bugfix/description` | `bugfix/memory-leak` |\n| Docs | `docs/description` | `docs/api-examples` |\n| Refactor | `refactor/description` | `refactor/query-engine` |\n\n## Recognition\n\nContributors are listed in:\n- [README.md](README.md) Contributors section\n- Release notes\n- GitHub contributors page\n\n---\n\n## Need Help?\n\n- \ud83d\udc1b [Report a bug](https://github.com/rapozoantonio/memorykit/issues/new?template=bug_report.md)\n- \ud83d\udca1 [Request a feature](https://github.com/rapozoantonio/memorykit/issues/new?template=feature_request.md)\n- \ud83d\udcac [Join discussions](https://github.com/rapozoantonio/memorykit/discussions)\n- \ud83d\udcda [Read the docs](docs/README.md)\n\n**Thank you for contributing to MemoryKit!** \ud83c\udf89

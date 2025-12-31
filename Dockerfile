@@ -20,7 +20,6 @@ COPY tests/MemoryKit.Application.Tests/MemoryKit.Application.Tests.csproj ./test
 COPY tests/MemoryKit.Infrastructure.Tests/MemoryKit.Infrastructure.Tests.csproj ./tests/MemoryKit.Infrastructure.Tests/
 COPY tests/MemoryKit.API.Tests/MemoryKit.API.Tests.csproj ./tests/MemoryKit.API.Tests/
 COPY tests/MemoryKit.IntegrationTests/MemoryKit.IntegrationTests.csproj ./tests/MemoryKit.IntegrationTests/
-COPY samples/MemoryKit.ConsoleDemo/MemoryKit.ConsoleDemo.csproj ./samples/MemoryKit.ConsoleDemo/
 
 # Restore dependencies (cached layer)
 RUN dotnet restore src/MemoryKit.API/MemoryKit.API.csproj
@@ -33,7 +32,7 @@ RUN dotnet publish src/MemoryKit.API/MemoryKit.API.csproj \
     --configuration Release \
     --output /app/publish \
     --no-restore \
-    -p:PublishReadyToRun=true \
+    --no-self-contained \
     -p:PublishSingleFile=false \
     -p:DebugType=None \
     -p:DebugSymbols=false
@@ -72,8 +71,7 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 EXPOSE 8080
 
 # Set environment variables
-ENV ASPNETCORE_URLS=http://+:8080 \
-    ASPNETCORE_ENVIRONMENT=Production \
+ENV ASPNETCORE_ENVIRONMENT=Production \
     DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false \
     TZ=UTC
 

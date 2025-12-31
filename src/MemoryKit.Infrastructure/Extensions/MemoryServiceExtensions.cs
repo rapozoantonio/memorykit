@@ -2,6 +2,8 @@ using MemoryKit.Domain.Interfaces;
 using MemoryKit.Infrastructure.Azure;
 using MemoryKit.Infrastructure.Factories;
 using MemoryKit.Infrastructure.InMemory;
+using MemoryKit.Infrastructure.PostgreSQL;
+using MemoryKit.Infrastructure.SQLite;
 using MemoryKit.Infrastructure.Resilience;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,12 +30,28 @@ public static class MemoryServiceExtensions
         // Get storage provider from configuration
         var providerString = configuration.GetValue<string>("MemoryKit:StorageProvider") ?? "InMemory";
         var isAzure = providerString.Equals("Azure", StringComparison.OrdinalIgnoreCase);
+        var isPostgres = providerString.Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase);
+        var isSqlite = providerString.Equals("SQLite", StringComparison.OrdinalIgnoreCase);
 
         // Register InMemory services (always available as fallback)
         services.AddSingleton<InMemoryWorkingMemoryService>();
         services.AddSingleton<InMemoryScratchpadService>();
         services.AddSingleton<EnhancedInMemoryProceduralMemoryService>();
         services.AddSingleton<InMemoryEpisodicMemoryService>();
+
+        // Register PostgreSQL storage if configured
+        if (isPostgres)
+        {
+            var connectionString = configuration.GetConnectionString("PostgreSQL") 
+                ?? throw new InvalidOperationException("PostgreSQL connection string not configured");
+            services.AddPostgresStorage(connectionString);
+        }
+
+        // Register SQLite storage if configured
+        if (isSqlite)
+        {
+            services.AddSqliteStorage();
+        }
 
         // Register Azure services if configured
         if (isAzure)

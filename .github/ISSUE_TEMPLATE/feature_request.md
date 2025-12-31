@@ -1,95 +1,46 @@
 ---
 name: Feature Request
 about: Suggest an idea for MemoryKit
-title: '[FEATURE] '
+title: "[FEATURE] "
 labels: enhancement, needs-triage
-assignees: ''
+assignees: ""
 ---
 
-## Problem Statement
+## Problem
 
-<!-- Is your feature request related to a problem? Please describe. -->
-<!-- e.g., "I'm always frustrated when..." -->
+<!-- What problem does this solve? -->
 
 ## Proposed Solution
 
-<!-- A clear and concise description of what you want to happen -->
-
-## Alternatives Considered
-
-<!-- Describe any alternative solutions or features you've considered -->
+<!-- What do you want to happen? -->
 
 ## Use Cases
-
-<!-- Describe specific use cases where this feature would be valuable -->
 
 1.
 2.
 3.
 
-## Example Implementation
-
-<!-- If you have ideas on how to implement this, share them here -->
+## Example API
 
 ```csharp
-// Example API or code structure
-public interface IProposedFeature
-{
-    Task<Result> DoSomethingAsync();
-}
+// How would you use this feature?
 ```
-
-## Impact Analysis
-
-**Benefits:**
--
--
-
-**Potential Drawbacks:**
--
--
-
-## Technical Considerations
-
-<!-- Any technical details, dependencies, or challenges to consider -->
-
-**Dependencies:**
--
-
-**Breaking Changes:**
-- [ ] Yes
-- [ ] No
-
-**Performance Impact:**
-- [ ] Positive
-- [ ] Neutral
-- [ ] Negative (explain below)
 
 ## Priority
 
-<!-- How important is this feature to you? -->
+- [ ] 🔥 Critical - Blocking
+- [ ] 🔴 High - Major improvement
+- [ ] 🟡 Medium - Nice to have
+- [ ] ⚪ Low - Minor enhancement
 
-- [ ] Critical - Blocking my use of MemoryKit
-- [ ] High - Would significantly improve my workflow
-- [ ] Medium - Nice to have
-- [ ] Low - Minor enhancement
+## Breaking Change?
 
-## Willingness to Contribute
+- [ ] Yes (explain impact)
+- [ ] No
 
-<!-- Would you be willing to contribute to implementing this feature? -->
+## Can You Contribute?
 
-- [ ] Yes, I can submit a PR
-- [ ] Yes, I can help with testing
-- [ ] Yes, I can help with documentation
-- [ ] No, just suggesting the idea
-
-## Additional Context
-
-<!-- Add any other context, mockups, or examples about the feature request -->
-
-## Related Issues
-
-<!-- Link to related issues or discussions -->
-
-- #
-- #
+- [ ] PR implementation
+- [ ] Testing
+- [ ] Documentation
+- [ ] Just suggesting

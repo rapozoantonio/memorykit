@@ -1,22 +1,26 @@
 #!/usr/bin/env node
 
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
   ListToolsRequestSchema,
   CallToolRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js';
-import { ProcessManager } from './process-manager.js';
-import { MemoryKitApiClient } from './api-client.js';
-import { registerTools } from './tools/index.js';
+} from "@modelcontextprotocol/sdk/types.js";
+import { ProcessManager } from "./process-manager.js";
+import { MemoryKitApiClient } from "./api-client.js";
+import { registerTools } from "./tools/index.js";
 
-const API_KEY = process.env.MEMORYKIT_API_KEY || 'mcp-local-key';
+const API_KEY = process.env.MEMORYKIT_API_KEY || "mcp-local-key";
+const USE_DOCKER = process.env.MEMORYKIT_USE_DOCKER !== "false";
+const EXTERNAL_API = process.env.MEMORYKIT_EXTERNAL_API === "true";
 
 async function main() {
   // Start .NET API process
   const processManager = new ProcessManager({
     apiKey: API_KEY,
-    port: 5555
+    port: 5555,
+    useDocker: USE_DOCKER,
+    externalApi: EXTERNAL_API,
   });
 
   try {
@@ -31,8 +35,8 @@ async function main() {
     // Create MCP server
     const server = new Server(
       {
-        name: 'memorykit-mcp-server',
-        version: '0.1.0',
+        name: "memorykit-mcp-server",
+        version: "0.1.0",
       },
       {
         capabilities: {
@@ -46,21 +50,21 @@ async function main() {
 
     // Handle graceful shutdown
     const shutdown = async () => {
-      console.error('\n[MCP] Shutting down...');
+      console.error("\n[MCP] Shutting down...");
       await processManager.stop();
       process.exit(0);
     };
 
-    process.on('SIGINT', shutdown);
-    process.on('SIGTERM', shutdown);
+    process.on("SIGINT", shutdown);
+    process.on("SIGTERM", shutdown);
 
     // Start MCP server with stdio transport
     const transport = new StdioServerTransport();
     await server.connect(transport);
 
-    console.error('[MCP] Server ready and listening on stdio');
+    console.error("[MCP] Server ready and listening on stdio");
   } catch (error) {
-    console.error('[MCP] Fatal error:', error);
+    console.error("[MCP] Fatal error:", error);
     await processManager.stop();
     process.exit(1);
   }

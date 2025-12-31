@@ -1,8 +1,8 @@
-version: '3.8'
+version: "3.8"
 
 services:
   # =============================================================================
-  # MemoryKit API
+  # MemoryKit API (with PostgreSQL persistence)
   # =============================================================================
   api:
     build:
@@ -12,22 +12,37 @@ services:
     container_name: memorykit-api
     ports:
       - "8080:8080"
+      - "5555:5555"
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://+:8080
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://0.0.0.0:5555
+      - MemoryKit__StorageProvider=PostgreSQL
+      - ConnectionStrings__PostgreSQL=Host=postgres;Database=memorykit;Username=memorykit;Password=memorykit_secure_pwd
       - Redis__ConnectionString=redis:6379
       - AzureOpenAI__Endpoint=${AZURE_OPENAI_ENDPOINT}
       - AzureOpenAI__ApiKey=${AZURE_OPENAI_API_KEY}
       - AzureOpenAI__DeploymentName=${AZURE_OPENAI_DEPLOYMENT}
       - AzureOpenAI__EmbeddingDeployment=${AZURE_OPENAI_EMBEDDING_DEPLOYMENT}
+      - ApiKeys__ValidKeys__0=mcp-local-key
+      - ApiKeys__UserMappings__mcp-local-key=mcp-user
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
     networks:
       - memorykit-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8080/health",
+        ]
       interval: 30s
       timeout: 3s
       retries: 3
@@ -76,7 +91,30 @@ services:
       - demo
 
   # =============================================================================
-  # MCP Server Mode (InMemory, no Redis)
+  # PostgreSQL (Persistent Storage for MCP Mode)
+  # =============================================================================
+  postgres:
+    image: pgvector/pgvector:pg15
+    container_name: memorykit-postgres
+    environment:
+      - POSTGRES_DB=memorykit
+      - POSTGRES_USER=memorykit
+      - POSTGRES_PASSWORD=memorykit_secure_pwd
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - memorykit-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U memorykit"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # =============================================================================
+  # MCP Server Mode (DEPRECATED - use main 'api' service)
   # =============================================================================
   mcp-api:
     build:
@@ -88,15 +126,27 @@ services:
       - "5555:5555"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - ASPNETCORE_URLS=http://+:5555
-      - MemoryKit__StorageProvider=InMemory
+      - ASPNETCORE_URLS=http://0.0.0.0:5555
+      - MemoryKit__StorageProvider=PostgreSQL
+      - ConnectionStrings__PostgreSQL=Host=postgres;Database=memorykit;Username=memorykit;Password=memorykit_secure_pwd
       - ApiKeys__ValidKeys__0=mcp-local-key
       - ApiKeys__UserMappings__mcp-local-key=mcp-user
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - memorykit-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5555/health"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:5555/health",
+        ]
       interval: 30s
       timeout: 3s
       retries: 3
@@ -110,4 +160,6 @@ networks:
 
 volumes:
   redis-data:
+    driver: local
+  postgres_data:
     driver: local

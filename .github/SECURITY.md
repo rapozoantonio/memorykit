@@ -1,5 +1,24 @@
 # Security Policy
 
+## 🚨 Found a Security Issue?
+
+**DO NOT** open a public GitHub issue.
+
+### Quick Report
+
+1. **🔒 GitHub Security Advisory** (Preferred)
+
+   - Go to: https://github.com/rapozoantonio/memorykit/security/advisories/new
+   - Click "Report a vulnerability"
+
+2. **📧 Email**
+   - security@memorykit.dev
+   - PGP key available on request
+
+**Response time:** Within 48 hours
+
+---
+
 ## Supported Versions
 
 We actively support the following versions with security updates:
@@ -20,6 +39,7 @@ We take the security of MemoryKit seriously. If you believe you have found a sec
 Instead, please report security vulnerabilities through one of the following methods:
 
 1. **GitHub Security Advisories** (Preferred)
+
    - Navigate to https://github.com/rapozoantonio/memorykit/security/advisories/new
    - Click "Report a vulnerability"
    - Fill in the details
@@ -30,15 +50,15 @@ Instead, please report security vulnerabilities through one of the following met
 
 ### What to Include
 
-Please include the following information in your report:
-
-- Type of vulnerability
-- Full paths of source file(s) related to the vulnerability
-- Location of the affected source code (tag/branch/commit/direct URL)
-- Step-by-step instructions to reproduce the issue
-- Proof-of-concept or exploit code (if possible)
-- Impact of the vulnerability
-- Possible fixes (if you have any suggestions)
+| Item                   | Details                           |
+| ---------------------- | --------------------------------- |
+| **Vulnerability type** | e.g., SQL injection, XSS, etc.    |
+| **Affected files**     | Full paths to source files        |
+| **Location**           | Branch/tag/commit or direct URL   |
+| **Reproduction steps** | Step-by-step instructions         |
+| **Proof-of-concept**   | Code to demonstrate (if possible) |
+| **Impact**             | What an attacker could do         |
+| **Suggested fix**      | Your recommendations (if any)     |
 
 ### Response Timeline
 
@@ -60,44 +80,40 @@ Please include the following information in your report:
 
 ## Security Best Practices
 
-When using MemoryKit, please follow these security best practices:
+### API Keys & Secrets
 
-### API Keys and Secrets
-
-- Never commit API keys, passwords, or secrets to version control
-- Use environment variables or secure vaults (Azure Key Vault)
-- Rotate API keys regularly
-- Use separate keys for development and production
+| ❌ Don't                   | ✅ Do                         |
+| -------------------------- | ----------------------------- |
+| Commit keys to git         | Use environment variables     |
+| Hardcode passwords         | Use Azure Key Vault           |
+| Share API keys             | Rotate keys regularly         |
+| Use same keys for dev/prod | Separate keys per environment |
 
 ### Azure Resources
 
-- Enable Azure AD authentication where possible
-- Use Managed Identities for Azure resource access
-- Enable Azure Security Center recommendations
-- Configure network security groups appropriately
-- Enable diagnostic logging
-
-### Data Protection
-
-- Always use TLS 1.3 for data in transit
-- Enable encryption at rest for all Azure storage
-- Implement proper data retention policies
-- Follow GDPR and data protection regulations
-- Use multi-tenancy isolation properly
+- ✅ Enable Azure AD authentication
+- ✅ Use Managed Identities
+- ✅ Configure network security groups
+- ✅ Enable diagnostic logging
+- ✅ Follow Azure Security Center recommendations
 
 ### Application Security
 
-- Keep dependencies up to date
-- Run security scans regularly
+```bash
+# Keep dependencies updated
+dotnet list package --outdated
+
+# Run security scans
+dotnet tool install --global security-scan
+```
+
+**Key practices:**
+
+- Use TLS 1.3 for data in transit
+- Enable encryption at rest for all Azure storage
 - Implement rate limiting on API endpoints
 - Validate and sanitize all inputs
-- Use parameterized queries to prevent injection attacks
-- Implement proper authentication and authorization
-- Enable Application Insights for security monitoring
-
-### Container Security
-
-- Use official base images
+- Use parameterized queries
 - Run containers as non-root users
 - Scan container images for vulnerabilities
 - Keep container runtime and orchestration updated
@@ -184,6 +200,7 @@ We currently do not have a bug bounty program, but we greatly appreciate securit
 ## Questions?
 
 If you have questions about this security policy, please contact:
+
 - Email: security@memorykit.dev
 - GitHub: Open a discussion at https://github.com/rapozoantonio/memorykit/discussions
 
