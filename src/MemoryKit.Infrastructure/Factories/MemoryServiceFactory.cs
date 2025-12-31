@@ -36,6 +36,7 @@ public class MemoryServiceFactory
         return provider switch
         {
             StorageProvider.Azure => _serviceProvider.GetRequiredService<Azure.AzureRedisWorkingMemoryService>(),
+            StorageProvider.PostgreSQL => _serviceProvider.GetRequiredService<PostgreSQL.Services.PostgresWorkingMemoryService>(),
             StorageProvider.InMemory => _serviceProvider.GetRequiredService<InMemory.InMemoryWorkingMemoryService>(),
             _ => throw new InvalidOperationException($"Unknown storage provider: {provider}")
         };
@@ -53,6 +54,7 @@ public class MemoryServiceFactory
         return provider switch
         {
             StorageProvider.Azure => _serviceProvider.GetRequiredService<Azure.AzureTableScratchpadService>(),
+            StorageProvider.PostgreSQL => _serviceProvider.GetRequiredService<PostgreSQL.Services.PostgresScratchpadService>(),
             StorageProvider.InMemory => _serviceProvider.GetRequiredService<InMemory.InMemoryScratchpadService>(),
             _ => throw new InvalidOperationException($"Unknown storage provider: {provider}")
         };
@@ -70,6 +72,7 @@ public class MemoryServiceFactory
         return provider switch
         {
             StorageProvider.Azure => _serviceProvider.GetRequiredService<Azure.AzureTableProceduralMemoryService>(),
+            StorageProvider.PostgreSQL => _serviceProvider.GetRequiredService<PostgreSQL.Services.PostgresProceduralMemoryService>(),
             StorageProvider.InMemory => _serviceProvider.GetRequiredService<InMemory.EnhancedInMemoryProceduralMemoryService>(),
             _ => throw new InvalidOperationException($"Unknown storage provider: {provider}")
         };
@@ -87,6 +90,7 @@ public class MemoryServiceFactory
         return provider switch
         {
             StorageProvider.Azure => _serviceProvider.GetRequiredService<Azure.AzureBlobEpisodicMemoryService>(),
+            StorageProvider.PostgreSQL => _serviceProvider.GetRequiredService<PostgreSQL.Services.PostgresEpisodicMemoryService>(),
             StorageProvider.InMemory => _serviceProvider.GetRequiredService<InMemory.InMemoryEpisodicMemoryService>(),
             _ => throw new InvalidOperationException($"Unknown storage provider: {provider}")
         };

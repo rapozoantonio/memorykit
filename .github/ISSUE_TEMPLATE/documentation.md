@@ -1,66 +1,44 @@
 ---
 name: Documentation Issue
-about: Report missing, incorrect, or unclear documentation
-title: '[DOCS] '
+about: Report missing, incorrect, or unclear docs
+title: "[DOCS] "
 labels: documentation
-assignees: ''
+assignees: ""
 ---
 
-## Documentation Issue Type
+## Issue Type
 
 - [ ] Missing documentation
-- [ ] Incorrect documentation
-- [ ] Unclear documentation
+- [ ] Incorrect information
+- [ ] Unclear/confusing
 - [ ] Broken link
-- [ ] Typo or formatting issue
-- [ ] Other
+- [ ] Typo/formatting
 
 ## Location
 
-<!-- Where is the documentation issue? -->
+**File:** <!-- e.g., README.md, docs/API.md -->
+**Section:** <!-- e.g., "Installation", "API Usage" -->
+**Link:** <!-- Direct link if applicable -->
 
-**File/Page:**
-<!-- e.g., README.md, docs/architecture.md, API reference -->
+## Problem
 
-**Section:**
-<!-- e.g., "Installation", "API Usage", specific heading -->
+<!-- What's wrong? -->
 
-**Link (if applicable):**
-<!-- Direct link to the documentation -->
+## Suggested Fix
 
-## Current Content
-
-<!-- What does the documentation currently say? -->
-
+```markdown
+<!-- What should it say instead? -->
 ```
-Paste current documentation here
-```
-
-## Problem Description
-
-<!-- What is wrong, missing, or unclear? -->
-
-## Suggested Improvement
-
-<!-- What should the documentation say instead? -->
-
-```
-Paste your suggested documentation here
-```
-
-## Additional Context
-
-<!-- Any other information that would help improve the documentation -->
 
 ## Impact
 
-- [ ] Blocking - Makes the feature unusable
-- [ ] High - Significantly hinders understanding
-- [ ] Medium - Causes confusion
-- [ ] Low - Minor improvement
+- [ ] 🔥 Blocking - Feature unusable
+- [ ] 🔴 High - Major confusion
+- [ ] 🟡 Medium - Some confusion
+- [ ] ⚪ Low - Minor improvement
 
-## Willingness to Contribute
+## Can You Help?
 
-- [ ] I can submit a PR to fix this
-- [ ] I can provide more details if needed
-- [ ] Just reporting the issue
+- [ ] I can submit a PR
+- [ ] I can provide more details
+- [ ] Just reporting

@@ -3,7 +3,7 @@ using FluentValidation.AspNetCore;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.OpenApi.Models;
+// using Microsoft.OpenApi.Models; // Disabled for MCP v0.1
 using MemoryKit.Infrastructure.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -142,10 +142,10 @@ builder.Services
 builder.Services.AddValidatorsFromAssembly(typeof(MemoryKit.Application.Validators.CreateMessageRequestValidator).Assembly);
 
 // ============================================================================
-// 6. API DOCUMENTATION (Swagger/OpenAPI)
+// 6. API DOCUMENTATION (Swagger/OpenAPI) - DISABLED FOR MCP v0.1
 // ============================================================================
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(options =>
+// builder.Services.AddEndpointsApiExplorer();
+/* builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
@@ -196,7 +196,7 @@ builder.Services.AddSwaggerGen(options =>
     {
         options.IncludeXmlComments(xmlPath);
     }
-});
+}); */
 
 // ============================================================================
 // 7. MEDIATR (CQRS)
@@ -328,15 +328,15 @@ app.Use(async (context, next) =>
     await next();
 });
 
-// 3. Swagger (in all environments for open source)
-app.UseSwagger();
+// 3. Swagger (in all environments for open source) - DISABLED FOR MCP v0.1
+/* app.UseSwagger();
 app.UseSwaggerUI(options =>
 {
     options.SwaggerEndpoint("/swagger/v1/swagger.json", "MemoryKit API v1");
     options.RoutePrefix = string.Empty; // Serve Swagger UI at root
     options.DocumentTitle = "MemoryKit API Documentation";
     options.DefaultModelsExpandDepth(-1); // Hide schemas section by default
-});
+}); */
 
 // 4. CORS
 app.UseCors("AllowSpecificOrigins");

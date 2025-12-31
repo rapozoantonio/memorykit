@@ -1,7 +1,7 @@
 # 🛠️ MemoryKit Development Guide
 
 **Version:** 1.0.0
-**Last Updated:** November 17, 2025
+**Last Updated:** December 26, 2024
 **Status:** Production-Ready
 
 ---
@@ -50,12 +50,14 @@ MemoryKit follows **Clean Architecture** principles with strict dependency rules
 ### Dependency Rules (CRITICAL)
 
 ✅ **ALLOWED**:
+
 - Domain → (nothing - zero dependencies)
 - Application → Domain
 - Infrastructure → Domain
 - API → Application + Infrastructure + Domain
 
 ❌ **FORBIDDEN**:
+
 - Domain → anything else
 - Application → Infrastructure (use interfaces from Domain)
 - Infrastructure → Application
@@ -156,27 +158,32 @@ MemoryKit/
 ### First-Time Setup
 
 1. **Clone the repository**:
+
    ```bash
    git clone https://github.com/rapozoantonio/memorykit.git
    cd memorykit
    ```
 
 2. **Restore dependencies**:
+
    ```bash
    dotnet restore
    ```
 
 3. **Build the solution**:
+
    ```bash
    dotnet build
    ```
 
 4. **Run tests**:
+
    ```bash
    dotnet test
    ```
 
 5. **Run the API**:
+
    ```bash
    cd src/MemoryKit.API
    dotnet run
@@ -205,9 +212,7 @@ Create `appsettings.Development.json` in `src/MemoryKit.API/`:
     "DeploymentName": "gpt-4",
     "EmbeddingDeployment": "text-embedding-ada-002"
   },
-  "ApiKeys": [
-    "dev-test-key-12345"
-  ]
+  "ApiKeys": ["dev-test-key-12345"]
 }
 ```
 
@@ -303,14 +308,14 @@ public MemoryContext GetContext(string user, string conv, string q)
 
 ### Naming Conventions
 
-| Type | Convention | Example |
-|------|------------|---------|
-| Interface | `I` prefix | `IMemoryOrchestrator` |
-| Service | `Service` suffix | `SemanticKernelService` |
-| Controller | `Controller` suffix | `ConversationsController` |
-| DTO | Descriptive noun | `QueryMemoryRequest` |
-| Enum | Singular noun | `MessageRole`, `MemoryLayer` |
-| Async method | `Async` suffix | `RetrieveContextAsync` |
+| Type         | Convention          | Example                      |
+| ------------ | ------------------- | ---------------------------- |
+| Interface    | `I` prefix          | `IMemoryOrchestrator`        |
+| Service      | `Service` suffix    | `SemanticKernelService`      |
+| Controller   | `Controller` suffix | `ConversationsController`    |
+| DTO          | Descriptive noun    | `QueryMemoryRequest`         |
+| Enum         | Singular noun       | `MessageRole`, `MemoryLayer` |
+| Async method | `Async` suffix      | `RetrieveContextAsync`       |
 
 ### XML Documentation (Required)
 
@@ -334,6 +339,7 @@ public async Task<MemoryContext> RetrieveContextAsync(...)
 ### Dependency Injection
 
 ✅ **Constructor Injection (Preferred)**:
+
 ```csharp
 public class MemoryOrchestrator : IMemoryOrchestrator
 {
@@ -351,6 +357,7 @@ public class MemoryOrchestrator : IMemoryOrchestrator
 ```
 
 ❌ **Service Locator (Avoid)**:
+
 ```csharp
 // Don't do this
 var service = serviceProvider.GetService<IWorkingMemoryService>();
@@ -500,6 +507,7 @@ dotnet run --project tests/MemoryKit.Benchmarks --configuration Release
 **Cause**: Application layer referencing Infrastructure types directly.
 
 **Solution**: Always use interfaces from `Domain.Interfaces`:
+
 ```csharp
 // ❌ Wrong
 using MemoryKit.Infrastructure.Azure;
@@ -513,6 +521,7 @@ using MemoryKit.Domain.Interfaces;
 **Error**: `Unable to resolve service for type 'IWorkingMemoryService'`
 
 **Solution**: Register in `Program.cs`:
+
 ```csharp
 builder.Services.AddScoped<IWorkingMemoryService, InMemoryWorkingMemoryService>();
 ```
@@ -610,11 +619,13 @@ az webapp deploy --resource-group memorykit-rg --name memorykit-api --src-path .
 ### PR Review Process
 
 1. Automated checks must pass:
+
    - ✅ All tests pass
    - ✅ No build warnings
    - ✅ Code coverage > 80%
 
 2. Code review by maintainer:
+
    - Architecture adherence
    - Code quality and readability
    - Performance implications

@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "memorykit": {
+      "command": "node",
+      "args": [
+        "C:/Users/rapoz/Documents/web-dev/memorykit/mcp-server/build/index.js"
+      ],
+      "env": {
+        "MEMORYKIT_API_KEY": "mcp-local-key",
+        "MEMORYKIT_API_URL": "http://localhost:5555",
+        "NODE_ENV": "production"
+      }
+    }
+  }
+}

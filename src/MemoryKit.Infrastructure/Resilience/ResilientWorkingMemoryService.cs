@@ -61,6 +61,14 @@ public class ResilientWorkingMemoryService : IWorkingMemoryService
             "DeleteUserDataAsync");
     }
 
+    public async Task RemoveAsync(string userId, string conversationId, string messageId, CancellationToken cancellationToken = default)
+    {
+        await ExecuteWithFallbackAsync(
+            async () => await _primaryService.RemoveAsync(userId, conversationId, messageId, cancellationToken),
+            async () => await _fallbackService.RemoveAsync(userId, conversationId, messageId, cancellationToken),
+            "RemoveAsync");
+    }
+
     private async Task ExecuteWithFallbackAsync(
         Func<Task> primaryAction,
         Func<Task> fallbackAction,

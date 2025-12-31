@@ -15,9 +15,14 @@ COPY src/MemoryKit.Domain/MemoryKit.Domain.csproj ./src/MemoryKit.Domain/
 COPY src/MemoryKit.Application/MemoryKit.Application.csproj ./src/MemoryKit.Application/
 COPY src/MemoryKit.Infrastructure/MemoryKit.Infrastructure.csproj ./src/MemoryKit.Infrastructure/
 COPY src/MemoryKit.API/MemoryKit.API.csproj ./src/MemoryKit.API/
+COPY tests/MemoryKit.Domain.Tests/MemoryKit.Domain.Tests.csproj ./tests/MemoryKit.Domain.Tests/
+COPY tests/MemoryKit.Application.Tests/MemoryKit.Application.Tests.csproj ./tests/MemoryKit.Application.Tests/
+COPY tests/MemoryKit.Infrastructure.Tests/MemoryKit.Infrastructure.Tests.csproj ./tests/MemoryKit.Infrastructure.Tests/
+COPY tests/MemoryKit.API.Tests/MemoryKit.API.Tests.csproj ./tests/MemoryKit.API.Tests/
+COPY tests/MemoryKit.IntegrationTests/MemoryKit.IntegrationTests.csproj ./tests/MemoryKit.IntegrationTests/
 
 # Restore dependencies (cached layer)
-RUN dotnet restore
+RUN dotnet restore src/MemoryKit.API/MemoryKit.API.csproj
 
 # Copy source code
 COPY src/ ./src/
@@ -27,7 +32,7 @@ RUN dotnet publish src/MemoryKit.API/MemoryKit.API.csproj \
     --configuration Release \
     --output /app/publish \
     --no-restore \
-    -p:PublishReadyToRun=true \
+    --no-self-contained \
     -p:PublishSingleFile=false \
     -p:DebugType=None \
     -p:DebugSymbols=false
@@ -41,7 +46,9 @@ FROM mcr.microsoft.com/dotnet/aspnet:9.0-alpine AS runtime
 RUN apk add --no-cache \
     ca-certificates \
     tzdata \
-    icu-libs
+    icu-libs \
+    wget \
+    wget
 
 # Create non-root user
 RUN addgroup -g 1000 memorykit && \
@@ -64,8 +71,7 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 EXPOSE 8080
 
 # Set environment variables
-ENV ASPNETCORE_URLS=http://+:8080 \
-    ASPNETCORE_ENVIRONMENT=Production \
+ENV ASPNETCORE_ENVIRONMENT=Production \
     DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false \
     TZ=UTC
 

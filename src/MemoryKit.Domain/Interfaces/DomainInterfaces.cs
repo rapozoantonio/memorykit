@@ -268,6 +268,15 @@ public interface IWorkingMemoryService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Removes a specific message from working memory.
+    /// </summary>
+    Task RemoveAsync(
+        string userId,
+        string conversationId,
+        string messageId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Deletes all working memory data for a user (GDPR compliance).
     /// </summary>
     Task DeleteUserDataAsync(
@@ -310,6 +319,11 @@ public interface IScratchpadService
     Task PruneAsync(string userId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Deletes a specific fact by ID.
+    /// </summary>
+    Task DeleteFactAsync(string userId, string factId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Deletes all semantic memory data for a user (GDPR compliance).
     /// </summary>
     Task DeleteUserDataAsync(
@@ -343,6 +357,11 @@ public interface IEpisodicMemoryService
     /// Retrieves a specific archived message.
     /// </summary>
     Task<Message?> GetAsync(string messageId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes a specific archived message.
+    /// </summary>
+    Task DeleteAsync(string userId, string messageId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Deletes all episodic memory data for a user (GDPR compliance).

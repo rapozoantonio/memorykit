@@ -195,6 +195,12 @@ public class AzureRedisWorkingMemoryService : IWorkingMemoryService
         }
     }
 
+    public Task RemoveAsync(string userId, string conversationId, string messageId, CancellationToken cancellationToken = default)
+    {
+        _logger.LogWarning("RemoveAsync not fully implemented for Azure Redis yet");
+        return Task.CompletedTask;
+    }
+
     private static string GetKey(string userId, string conversationId)
         => $"wm:{userId}:{conversationId}";
 }

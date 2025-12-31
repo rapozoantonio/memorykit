@@ -9,12 +9,25 @@
     <RootNamespace>MemoryKit.API</RootNamespace>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591</NoWarn>
+    
+    <!-- Self-contained publishing configuration -->
+    <RuntimeIdentifiers>linux-x64;osx-x64;osx-arm64;win-x64</RuntimeIdentifiers>
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <PublishTrimmed>false</PublishTrimmed>
+    <PublishReadyToRun>false</PublishReadyToRun>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    
+    <!-- Reduce executable size -->
+    <!--<TrimMode>partial</TrimMode>-->
+    <InvariantGlobalization>false</InvariantGlobalization>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- ASP.NET Core & Web API -->
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.11" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.10.2" />
+    <!--<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.11" />-->
+    <!--<PackageReference Include="Swashbuckle.AspNetCore" Version="6.10.2" />-->
 
     <!-- CQRS & Validation -->
     <PackageReference Include="MediatR" Version="13.1.0" />
@@ -28,9 +41,9 @@
     <PackageReference Include="System.Threading.RateLimiting" Version="10.0.0" />
 
     <!-- Configuration & DI -->
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.ApplicationInsights" Version="2.23.0" />
   </ItemGroup>
 

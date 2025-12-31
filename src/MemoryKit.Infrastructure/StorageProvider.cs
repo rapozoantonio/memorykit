@@ -11,6 +11,16 @@ public enum StorageProvider
     InMemory,
 
     /// <summary>
+    /// PostgreSQL with pgvector for vector search (recommended for Docker self-hosted)
+    /// </summary>
+    PostgreSQL,
+
+    /// <summary>
+    /// SQLite for local/CLI deployments (zero-config, single file)
+    /// </summary>
+    SQLite,
+
+    /// <summary>
     /// Azure cloud services (Redis, Table Storage, Blob Storage, AI Search)
     /// </summary>
     Azure

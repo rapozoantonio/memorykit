@@ -1,17 +1,37 @@
 # API Documentation
 
-## Base URL
+**Base URL:** `https://api.memorykit.dev/v1`
 
+---
+
+## Quick Start
+
+```bash
+# 1. Create a conversation
+curl -X POST https://api.memorykit.dev/v1/conversations \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"title": "My Chat"}'
+
+# 2. Add a message
+curl -X POST https://api.memorykit.dev/v1/conversations/{id}/messages \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{"role": "user", "content": "Hello!"}'
+
+# 3. Query with context
+curl -X POST https://api.memorykit.dev/v1/conversations/{id}/query \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{"question": "What did I just say?"}'
 ```
-https://api.memorykit.dev/v1
-```
+
+---
 
 ## Authentication
 
-All endpoints require authentication via Bearer token (JWT) or API Key.
+All endpoints require authentication:
 
-```
-Authorization: Bearer <token>
+```http
+Authorization: Bearer YOUR_TOKEN
 ```
 
 ## Endpoints
@@ -19,6 +39,7 @@ Authorization: Bearer <token>
 ### Conversations
 
 #### Create Conversation
+
 ```
 POST /conversations
 
@@ -40,6 +61,7 @@ Response (201 Created):
 ```
 
 #### Add Message
+
 ```
 POST /conversations/{conversationId}/messages
 
@@ -62,6 +84,7 @@ Response (201 Created):
 ```
 
 #### Query Memory
+
 ```
 POST /conversations/{conversationId}/query
 
@@ -92,6 +115,7 @@ Response (200 OK):
 ```
 
 #### Get Context
+
 ```
 GET /conversations/{conversationId}/context?query=caching
 
@@ -106,6 +130,7 @@ Response (200 OK):
 ### Memory
 
 #### Health Check
+
 ```
 GET /memory/health
 
@@ -117,6 +142,7 @@ Response (200 OK):
 ```
 
 #### Get Statistics
+
 ```
 GET /memory/statistics
 
@@ -133,6 +159,7 @@ Response (200 OK):
 ### Patterns
 
 #### List Patterns
+
 ```
 GET /patterns
 
@@ -155,6 +182,7 @@ Response (200 OK):
 ```
 
 #### Delete Pattern
+
 ```
 DELETE /patterns/{patternId}
 
@@ -163,32 +191,37 @@ Response (204 No Content)
 
 ## Error Handling
 
-### Error Response Format
+**Response Format:**
+
 ```json
 {
   "error": "error_code",
-  "message": "Human-readable error message",
-  "details": {
-    "field": ["validation error"]
-  }
+  "message": "Human-readable message",
+  "details": { "field": "error details" }
 }
 ```
 
-### Common Error Codes
-- `BAD_REQUEST` (400): Invalid input
-- `UNAUTHORIZED` (401): Missing or invalid authentication
-- `FORBIDDEN` (403): Insufficient permissions
-- `NOT_FOUND` (404): Resource not found
-- `RATE_LIMITED` (429): Too many requests
-- `INTERNAL_ERROR` (500): Server error
+**Status Codes:**
+
+| Code | Error            | Meaning                  |
+| ---- | ---------------- | ------------------------ |
+| 400  | `BAD_REQUEST`    | Invalid input            |
+| 401  | `UNAUTHORIZED`   | Missing/invalid auth     |
+| 403  | `FORBIDDEN`      | Insufficient permissions |
+| 404  | `NOT_FOUND`      | Resource not found       |
+| 429  | `RATE_LIMITED`   | Too many requests        |
+| 500  | `INTERNAL_ERROR` | Server error             |
 
 ## Rate Limiting
 
-- Standard tier: 100 requests/minute
-- Premium tier: 1000 requests/minute
+| Tier     | Limit        |
+| -------- | ------------ |
+| Standard | 100 req/min  |
+| Premium  | 1000 req/min |
 
-Rate limit headers:
-```
+**Response Headers:**
+
+```http
 X-RateLimit-Limit: 100
 X-RateLimit-Remaining: 87
 X-RateLimit-Reset: 1637062860
@@ -213,6 +246,7 @@ Response:
 ## SDK Usage
 
 ### .NET
+
 ```csharp
 using MemoryKit.Client;
 
@@ -249,13 +283,12 @@ Events will be POSTed with signature verification.
 
 ## Rate Limits & Quotas
 
-| Tier | Requests/Min | Conversations | Messages | Storage |
-|------|-------------|---------------|----------|---------|
-| Free | 10 | 5 | 1,000 | 10MB |
-| Pro | 100 | Unlimited | Unlimited | 1GB |
-| Enterprise | Custom | Custom | Custom | Custom |
+| Tier       | Requests/Min | Conversations | Messages  | Storage |
+| ---------- | ------------ | ------------- | --------- | ------- |
+| Free       | 10           | 5             | 1,000     | 10MB    |
+| Pro        | 100          | Unlimited     | Unlimited | 1GB     |
+| Enterprise | Custom       | Custom        | Custom    | Custom  |
 
 ## Changelog
 
 See `CHANGELOG.md` for API version history and breaking changes.
-

@@ -1,103 +1,77 @@
 ## Description
 
-<!-- Provide a clear and concise description of the changes -->
+<!-- Concise description of changes (2-3 sentences) -->
 
-## Type of Change
+## Type
 
-<!-- Mark the relevant option with an 'x' -->
+- [ ] 🐛 Bug fix
+- [ ] ✨ New feature
+- [ ] 🔄 Refactoring
+- [ ] 📝 Documentation
+- [ ] ⚡ Performance
+- [ ] 🚨 Breaking change
 
-- [ ] Bug fix (non-breaking change which fixes an issue)
-- [ ] New feature (non-breaking change which adds functionality)
-- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [ ] Documentation update
-- [ ] Performance improvement
-- [ ] Code refactoring
-- [ ] Test improvement
-- [ ] CI/CD improvement
+## Changes
+
+<!-- List key changes -->
+
+-
+-
+-
 
 ## Related Issues
 
-<!-- Link to related issues using #issue_number -->
-
-Fixes #
-Relates to #
-
-## Changes Made
-
-<!-- List the key changes made in this PR -->
-
--
--
--
+Closes #
+Related: #
 
 ## Testing
 
-<!-- Describe the tests you ran to verify your changes -->
+```bash
+# All tests must pass
+dotnet test
+dotnet build /warnaserror
+```
 
-- [ ] Unit tests pass locally
-- [ ] Integration tests pass locally
+- [ ] Unit tests pass
+- [ ] Integration tests pass (if applicable)
 - [ ] Manual testing completed
-- [ ] New tests added for new functionality
-- [ ] All existing tests pass
+- [ ] New tests added for new features
 
-### Test Coverage
-
-<!-- If applicable, mention the test coverage percentage -->
-
-- Current coverage: __%
-- Coverage change: +/- __%
-
-## Screenshots (if applicable)
-
-<!-- Add screenshots to help explain your changes -->
+<!-- If applicable: Coverage before: __%, Coverage after: __% -->
 
 ## Checklist
 
-<!-- Mark completed items with an 'x' -->
+**Code Quality:**
 
-### Code Quality
+- [ ] Follows project coding standards
+- [ ] Self-reviewed my code
+- [ ] Added comments for complex logic
+- [ ] No new warnings
+- [ ] No sensitive data included
 
-- [ ] My code follows the project's coding standards
-- [ ] I have performed a self-review of my code
-- [ ] I have commented my code, particularly in hard-to-understand areas
-- [ ] My changes generate no new warnings
-- [ ] No sensitive data (API keys, passwords, etc.) is included
+**Documentation:**
 
-### Documentation
+- [ ] Updated relevant documentation
+- [ ] Updated [CHANGELOG.md](../CHANGELOG.md)
+- [ ] Added/updated XML documentation
+- [ ] Updated README.md (if needed)
 
-- [ ] I have updated the documentation accordingly
-- [ ] I have updated the CHANGELOG.md (if applicable)
-- [ ] XML documentation comments are added/updated for public APIs
-- [ ] README.md is updated (if needed)
+**Breaking Changes:**
 
-### Testing
+<!-- If yes, describe migration path -->
 
-- [ ] I have added tests that prove my fix is effective or that my feature works
-- [ ] New and existing unit tests pass locally
-- [ ] I have tested this on multiple platforms (if applicable)
+- [ ] No breaking changes
+- [ ] Breaking changes documented below
 
-### Performance
+<!-- If breaking changes, add migration guide:
 
-- [ ] I have considered the performance impact of my changes
-- [ ] No performance regressions introduced
-- [ ] Benchmarks run and results are acceptable (if applicable)
-
-### Security
-
-- [ ] Security implications have been considered
-- [ ] No new security vulnerabilities introduced
-- [ ] Dependencies are up to date and secure
-
-## Breaking Changes
-
-<!-- If this PR contains breaking changes, describe them here -->
-
-**Before:**
 ```csharp
-// Old API
-```
+// Before
 
-**After:**
+// After
+```
+-->
+
 ```csharp
 // New API
 ```

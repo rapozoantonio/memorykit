@@ -1,105 +1,113 @@
 # Architecture Documentation
 
-## Overview
+**Status:** Production Ready | **Version:** 1.0.0
 
-MemoryKit implements a clean architecture with clear separation of concerns across four main layers.
+---
+
+## Quick Overview
+
+MemoryKit uses **Clean Architecture** with strict dependency rules:
+
+```
+┌──────────────────────────────────────┐
+│           API (REST)                 │
+├──────────────────────────────────────┤
+│       Application (Use Cases)        │
+├──────────────────────────────────────┤
+│    Domain (Business Logic) ⭐         │  ← No Dependencies!
+├──────────────────────────────────────┤
+│  Infrastructure (External Services)  │
+└──────────────────────────────────────┘
+```
+
+**Key Rule:** Dependency flow is always inward. Domain has ZERO external dependencies.
 
 ## Layer Descriptions
 
 ### Domain Layer (MemoryKit.Domain)
 
-The core business logic layer containing:
+**Purpose:** Core business logic - the heart of MemoryKit
 
-- **Entities**: Core domain objects (Message, Conversation, ExtractedFact, ProceduralPattern)
-- **Value Objects**: Immutable objects representing values (ImportanceScore, EmbeddingVector, QueryPlan)
-- **Enums**: Core domain enumerations (MessageRole, QueryType, MemoryLayer, EntityType, TriggerType)
-- **Interfaces**: Contracts for external dependencies (no implementations)
-- **Services**: Domain services with core business logic
+| Component         | Examples                                                |
+| ----------------- | ------------------------------------------------------- |
+| **Entities**      | Message, Conversation, ExtractedFact, ProceduralPattern |
+| **Value Objects** | ImportanceScore, EmbeddingVector, QueryPlan             |
+| **Enums**         | MessageRole, QueryType, MemoryLayer, EntityType         |
+| **Interfaces**    | All service contracts (IWorkingMemoryService, etc.)     |
 
-Key principles:
-- No external dependencies except logging abstractions
-- Pure business logic, framework-agnostic
-- Entities maintain invariants through private constructors and factory methods
+**Rules:**
+
+- ❌ ZERO external dependencies (except logging)
+- ✅ Pure C# business logic
+- ✅ Framework-agnostic
+- ✅ Entities use factory methods, not public constructors
 
 ### Application Layer (MemoryKit.Application)
 
-Implements use cases and application logic:
+**Purpose:** Use cases and orchestration
 
-- **Use Cases**: CQRS commands and queries (AddMessage, QueryMemory, GetContext)
-- **DTOs**: Data transfer objects for API requests/responses
-- **Validators**: FluentValidation rules for input validation
-- **Mapping**: AutoMapper profiles for entity-to-DTO conversions
-- **Services**: Orchestration and business process logic
+| Component      | Technology       | Examples                              |
+| -------------- | ---------------- | ------------------------------------- |
+| **Use Cases**  | MediatR CQRS     | AddMessage, QueryMemory, GetContext   |
+| **DTOs**       | Records          | CreateMessageRequest, MessageResponse |
+| **Validators** | FluentValidation | CreateMessageRequestValidator         |
+| **Mapping**    | AutoMapper       | Entity → DTO conversions              |
 
-Key principles:
-- Depends on Domain layer
-- Contains application-specific business logic
-- Orchestrates interactions between layers
+**Dependencies:** Domain only
 
 ### Infrastructure Layer (MemoryKit.Infrastructure)
 
-Implements external dependencies and technical concerns:
+**Purpose:** External service implementations
 
-- **Azure**: Azure services (Redis, Table Storage, Blob, AI Search)
-- **SemanticKernel**: Integration with Azure OpenAI and embeddings
-- **Cognitive**: Neuroscience-inspired services (Amygdala, Hippocampus, Prefrontal Controller)
-- **InMemory**: In-memory implementations for testing and development
+| Namespace          | Purpose                                       |
+| ------------------ | --------------------------------------------- |
+| **Azure**          | Redis, Table Storage, Blob Storage, AI Search |
+| **Cognitive**      | Amygdala, Hippocampus, Prefrontal Controller  |
+| **SemanticKernel** | Azure OpenAI, embeddings                      |
+| **InMemory**       | Testing implementations                       |
 
-Key principles:
-- Depends on Domain and Application layers
-- Implements interfaces defined in Domain
-- Isolates external service dependencies
+**Dependencies:** Implements Domain interfaces
 
-### Presentation Layer (MemoryKit.API)
+### API Layer (MemoryKit.API)
 
-ASP.NET Core Web API:
+**Purpose:** REST endpoints
 
-- **Controllers**: REST endpoints
-- **Middleware**: Cross-cutting concerns
-- **Filters**: Request/response processing
-- **Program.cs**: Application configuration
+| Component       | Purpose                       |
+| --------------- | ----------------------------- |
+| **Controllers** | REST endpoints                |
+| **Middleware**  | Rate limiting, authentication |
+| **Program.cs**  | DI configuration              |
 
-Key principles:
-- Depends on Application and Domain layers
-- Handles HTTP protocol concerns
-- Uses MediatR for dispatching commands/queries
+**Dependencies:** All layers (composition root)
 
 ## Memory Hierarchy
 
-MemoryKit implements a four-layer memory system inspired by human cognition:
+4-layer memory system inspired by human cognition:
 
-### Layer 3: Working Memory (Redis)
-- **Latency**: < 5ms
-- **Capacity**: 10 recent items per conversation
-- **Purpose**: Hot context for active conversations
-- **Service**: `IWorkingMemoryService`
+| Layer              | Storage          | Latency | Capacity     | Purpose          |
+| ------------------ | ---------------- | ------- | ------------ | ---------------- |
+| **L3: Working**    | Redis            | <5ms    | 10 items     | Hot context      |
+| **L2: Semantic**   | Table Storage    | ~30ms   | Unlimited\*  | Facts & entities |
+| **L1: Episodic**   | Blob + AI Search | ~120ms  | Full history | Complete archive |
+| **LP: Procedural** | Table Storage    | ~50ms   | Patterns     | Learned routines |
 
-### Layer 2: Semantic Memory (Table Storage)
-- **Latency**: ~30ms
-- **Capacity**: Unlimited (with pruning)
-- **Purpose**: Extracted facts and entities
-- **Service**: `IScratchpadService`
+\*With intelligent pruning
 
-### Layer 1: Episodic Memory (Blob + AI Search)
-- **Latency**: ~120ms
-- **Capacity**: Full conversation history
-- **Purpose**: Complete conversation archive
-- **Service**: `IEpisodicMemoryService`
+**Services:**
 
-### Layer P: Procedural Memory (Table Storage)
-- **Latency**: ~50ms
-- **Capacity**: Learned patterns
-- **Purpose**: Routines and preferences
-- **Service**: `IProceduralMemoryService`
+- `IWorkingMemoryService`
+- `IScratchpadService`
+- `IEpisodicMemoryService`
+- `IProceduralMemoryService`
 
 ## Cognitive Model Mapping
 
-| Brain Component | Function | Software | Service |
-|---|---|---|---|
-| Prefrontal Cortex | Executive function | Query planning | `IPrefrontalController` |
-| Amygdala | Emotional tagging | Importance scoring | `IAmygdalaImportanceEngine` |
-| Hippocampus | Short-term consolidation | Initial indexing | `IHippocampusIndexer` |
-| Basal Ganglia | Procedural memory | Pattern matching | `IProceduralMemoryService` |
+| Brain Component   | Function                 | Software           | Service                     |
+| ----------------- | ------------------------ | ------------------ | --------------------------- |
+| Prefrontal Cortex | Executive function       | Query planning     | `IPrefrontalController`     |
+| Amygdala          | Emotional tagging        | Importance scoring | `IAmygdalaImportanceEngine` |
+| Hippocampus       | Short-term consolidation | Initial indexing   | `IHippocampusIndexer`       |
+| Basal Ganglia     | Procedural memory        | Pattern matching   | `IProceduralMemoryService`  |
 
 ## Data Flow
 
@@ -176,39 +184,47 @@ MemoryKit implements a four-layer memory system inspired by human cognition:
 ## Patterns Used
 
 ### CQRS (Command Query Responsibility Segregation)
+
 - Commands for write operations
 - Queries for read operations
 - Separated handlers for each
 
 ### Repository Pattern
+
 - Abstracted data access
 - Memory layer implementations
 
 ### Dependency Injection
+
 - Loose coupling
 - Testability
 - Flexibility
 
 ### Factory Pattern
+
 - Entity creation through factories
 - Ensures valid state
 
 ### Strategy Pattern
+
 - Pluggable memory layer implementations
 - Different cognitive service strategies
 
 ## Performance Considerations
 
 ### Parallel Retrieval
+
 - Memory layers retrieved in parallel
 - Reduces total latency
 
 ### Caching Strategy
+
 - Working memory LRU eviction
 - Fact importance-based retention
 - Episodic compression
 
 ### Token Optimization
+
 - Minimal context selection
 - Query plan optimization
 - Irrelevant data filtering
@@ -225,14 +241,17 @@ MemoryKit implements a four-layer memory system inspired by human cognition:
 ## Testing Strategy
 
 ### Unit Tests
+
 - Domain entities and value objects
 - Business logic in services
 
 ### Integration Tests
+
 - Memory layer interactions
 - End-to-end query processing
 
 ### Performance Tests
+
 - Latency monitoring
 - Throughput testing
 
@@ -250,4 +269,3 @@ See `DEPLOYMENT.md` for cloud deployment strategies and infrastructure setup.
 6. Performance testing
 7. Security review
 8. Documentation
-
