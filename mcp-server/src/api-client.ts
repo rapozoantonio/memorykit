@@ -16,7 +16,7 @@ export class MemoryKitApiClient {
 
   // Conversation management
   async createConversation(
-    title: string = "MCP Conversation"
+    title: string = "MCP Conversation",
   ): Promise<string> {
     const response = await this.client.post("/api/v1/conversations", {
       Title: title,
@@ -31,7 +31,7 @@ export class MemoryKitApiClient {
       role: "user" | "assistant";
       content: string;
       tags?: string[];
-    }
+    },
   ): Promise<string> {
     // Convert role string to enum number: user=0, assistant=1
     const roleNum = message.role === "user" ? 0 : 1;
@@ -41,29 +41,16 @@ export class MemoryKitApiClient {
         Role: roleNum,
         Content: message.content,
         Tags: message.tags,
-      }
+      },
     );
     return response.data.Id;
-  }
-
-  // Retrieve messages
-  async retrieveMessages(
-    conversationId: string,
-    limit?: number,
-    layer?: string
-  ): Promise<any> {
-    const response = await this.client.get(
-      `/api/v1/conversations/${conversationId}/messages`,
-      { params: { limit, layer } }
-    );
-    return response.data; // Returns {Messages[], Total, HasMore}
   }
 
   // Search/Query memory
   async searchMemory(conversationId: string, query: string): Promise<any> {
     const response = await this.client.post(
       `/api/v1/conversations/${conversationId}/query`,
-      { Question: query }
+      { Question: query },
     );
     return response.data; // Returns {Answer, Sources}
   }
@@ -71,7 +58,7 @@ export class MemoryKitApiClient {
   // Get context
   async getContext(conversationId: string): Promise<any> {
     const response = await this.client.get(
-      `/api/v1/conversations/${conversationId}/context`
+      `/api/v1/conversations/${conversationId}/context`,
     );
     return response.data; // Returns {Context, TotalTokens, RetrievalLatencyMs}
   }
@@ -79,10 +66,10 @@ export class MemoryKitApiClient {
   // Forget memory
   async forgetMessage(
     conversationId: string,
-    messageId: string
+    messageId: string,
   ): Promise<void> {
     await this.client.delete(
-      `/api/v1/conversations/${conversationId}/messages/${messageId}`
+      `/api/v1/conversations/${conversationId}/messages/${messageId}`,
     );
   }
 
@@ -90,7 +77,7 @@ export class MemoryKitApiClient {
   async consolidate(conversationId: string, force = false): Promise<any> {
     const response = await this.client.post(
       `/api/v1/conversations/${conversationId}/consolidate`,
-      { Force: force }
+      { Force: force },
     );
     return response.data; // Returns consolidation stats
   }
