@@ -1,0 +1,36 @@
+version: "0.1"
+
+# Working memory layer configuration
+working:
+  max_entries: 50
+  decay_threshold_days: 7
+  promotion_threshold: 0.70
+
+# Facts memory layer configuration
+facts:
+  max_entries_per_file: 100
+  auto_categorize: true
+
+# Episodes memory layer configuration
+episodes:
+  date_format: "YYYY-MM-DD"
+  compaction_after_days: 30
+
+# Procedures memory layer configuration
+procedures:
+  trigger_patterns: true
+
+# Consolidation settings
+consolidation:
+  auto: true
+  interval_minutes: 0
+
+# Global memory settings
+global:
+  enabled: true
+  priority: "project"
+
+# Context retrieval settings
+context:
+  max_tokens_estimate: 4000
+  prioritize_by: "importance"
