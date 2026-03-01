@@ -35,15 +35,15 @@
 
     <!-- Application Insights & Monitoring -->
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.23.0" />
-    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="9.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="9.0.13" />
 
     <!-- Rate Limiting (built into .NET 9) -->
-    <PackageReference Include="System.Threading.RateLimiting" Version="10.0.2" />
+    <PackageReference Include="System.Threading.RateLimiting" Version="10.0.3" />
 
     <!-- Configuration & DI -->
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.12" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.12" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.13" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.13" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.13" />
     <PackageReference Include="Microsoft.Extensions.Logging.ApplicationInsights" Version="2.23.0" />
   </ItemGroup>
 
