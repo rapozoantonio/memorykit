@@ -40,12 +40,12 @@ export async function updateMemory(
   // Build update object
   const entryUpdates: Partial<MemoryEntry> = {};
 
-  if (updates.content !== undefined) {
-    entryUpdates.content = updates.content;
+  if (updates.what !== undefined) {
+    entryUpdates.what = updates.what;
 
     // Re-calculate importance if content changed (unless manually overridden)
     if (updates.importance === undefined) {
-      entryUpdates.importance = calculateImportance(updates.content);
+      entryUpdates.importance = calculateImportance(updates.what);
     }
   }
 

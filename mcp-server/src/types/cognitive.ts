@@ -26,6 +26,7 @@ export interface ImportanceSignals {
   sentiment: number;
   technicalDepth: number;
   conversationContext: number;
+  mmlStructure: number;
 }
 
 /**

@@ -76,6 +76,13 @@ export function mergeConfigs(
       ...secondary.context,
       ...primary.context,
     },
+    quality_gates: {
+      importance_floor: 0.15,
+      duplicate_jaccard_threshold: 0.6,
+      duplicate_word_overlap: 3,
+      ...(secondary.quality_gates ?? {}),
+      ...(primary.quality_gates ?? {}),
+    },
   };
 }
 

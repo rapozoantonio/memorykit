@@ -42,6 +42,7 @@ function calculateAllSignals(
     sentiment: detectSentiment(content),
     technicalDepth: detectTechnicalDepth(content),
     conversationContext: detectConversationContext(content),
+    mmlStructure: detectMMLStructure(content),
   };
 }
 
@@ -133,7 +134,7 @@ function detectCodeBlocks(content: string): number {
  */
 function detectNovelty(content: string, context?: EntryContext): number {
   if (!context?.existingEntries || context.existingEntries.length === 0) {
-    return 0.5; // Assume moderate novelty if no context
+    return 0.3; // Moderate novelty default - balanced to avoid inflating trivial content while allowing factual content to score above floor
   }
 
   // Extract meaningful words
@@ -260,10 +261,77 @@ function detectConversationContext(content: string): number {
 }
 
 /**
+ * Detect MML structure (pre-normalized entries)
+ * Returns higher scores when content contains structured MML keys
+ * This avoids double-counting with prose-based signals
+ */
+function detectMMLStructure(content: string): number {
+  // Check if content is in MML format (has ### heading and - **key**: value lines)
+  if (!content.includes("- **")) {
+    return 0.0; // Not MML format
+  }
+
+  // Extract MML keys present
+  const mmlKeys = new Set<string>();
+  const keyPattern = /- \*\*([a-z-]+)\*\*:/gi;
+  let match;
+
+  while ((match = keyPattern.exec(content)) !== null) {
+    mmlKeys.add(match[1].toLowerCase());
+  }
+
+  if (mmlKeys.size === 0) {
+    return 0.0; // No MML keys found
+  }
+
+  // Score based on key combinations
+  // Strong decision: has rejected or constraint
+  if (mmlKeys.has("rejected") || mmlKeys.has("constraint")) {
+    return 0.7;
+  }
+
+  // Complete problem-resolution: has symptom + fix
+  if (mmlKeys.has("symptom") && mmlKeys.has("fix")) {
+    return 0.6;
+  }
+
+  // Complete procedure: has do + dont
+  if (mmlKeys.has("do") && mmlKeys.has("dont")) {
+    return 0.5;
+  }
+
+  // Partial procedure: has do only
+  if (mmlKeys.has("do")) {
+    return 0.3;
+  }
+
+  // Problem-related keys
+  if (
+    mmlKeys.has("symptom") ||
+    mmlKeys.has("root-cause") ||
+    mmlKeys.has("workaround")
+  ) {
+    return 0.4;
+  }
+
+  // Has why (rationale provided)
+  if (mmlKeys.has("why")) {
+    return 0.2;
+  }
+
+  // Basic MML structure detected but no special keys
+  return 0.1;
+}
+
+/**
  * Compute geometric mean of signal scores
  * More robust than arithmetic mean - prevents single high signal from inflating score
+ * Special handling for MML structure to avoid over-dampening
  */
 function computeGeometricMean(signals: ImportanceSignals): number {
+  // Check if MML structure is present (strong structural indicator)
+  const hasMMLStructure = signals.mmlStructure > 0.1;
+
   // Filter out trivial signals
   const values = Object.values(signals).filter((s) => s > 0.01);
 
@@ -271,17 +339,45 @@ function computeGeometricMean(signals: ImportanceSignals): number {
     return 0.1; // Minimum floor
   }
 
-  // Calculate product
-  const product = values.reduce((acc, val) => acc * val, 1);
+  // For MML content, use weighted geometric mean to preserve MML signal strength
+  if (hasMMLStructure) {
+    // Separate MML signal from others
+    const mmlScore = signals.mmlStructure;
+    const otherSignals = values.filter((v) => v !== mmlScore);
 
-  // Geometric mean
-  const geometricMean = Math.pow(product, 1.0 / values.length);
+    if (otherSignals.length === 0) {
+      // Only MML signal present
+      return Math.max(0.1, Math.min(0.95, mmlScore * 0.9));
+    }
 
-  // Apply dampening factor (0.90) to avoid over-scoring
-  const dampened = geometricMean * 0.9;
+    // Weighted combination: 70% MML signal, 30% geometric mean of others
+    const otherProduct = otherSignals.reduce((acc, val) => acc * val, 1);
+    const otherGeomean = Math.pow(otherProduct, 1.0 / otherSignals.length);
 
-  // Clamp to 0.05-0.95 range
-  return Math.max(0.05, Math.min(0.95, dampened));
+    const combined = mmlScore * 0.7 + otherGeomean * 0.3;
+
+    // Apply dampening and clamp
+    return Math.max(0.1, Math.min(0.95, combined * 0.9));
+  }
+
+  // For prose content, use max-weighted approach (mirrors MML pattern)
+  // Prevents "more signals = lower score" problem with pure geometric mean
+  const maxSignal = Math.max(...values);
+
+  if (values.length === 1) {
+    return Math.max(0.1, Math.min(0.95, maxSignal * 0.9));
+  }
+
+  const otherSignals = values.filter((v) => v !== maxSignal);
+  const otherProduct = otherSignals.reduce((acc, val) => acc * val, 1);
+  const otherGeomean = Math.pow(otherProduct, 1.0 / otherSignals.length);
+
+  // 30% max signal, 70% geometric mean of others
+  // More conservative than MML's 70-30 to avoid over-scoring prose
+  const combined = maxSignal * 0.3 + otherGeomean * 0.7;
+  const dampened = combined * 0.9;
+
+  return Math.max(0.1, Math.min(0.95, dampened));
 }
 
 /**

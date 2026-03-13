@@ -4,6 +4,7 @@
 
 import type { UpdateOptions } from "../types/memory.js";
 import { updateMemory } from "../memory/update.js";
+import { validateInput, UpdateMemorySchema } from "../types/validation.js";
 
 export const updateMemoryTool = {
   name: "update_memory",
@@ -33,14 +34,20 @@ export const updateMemoryTool = {
   },
 };
 
-export async function handleUpdateMemory(args: any): Promise<any> {
+export async function handleUpdateMemory(args: unknown): Promise<any> {
+  const v = validateInput(UpdateMemorySchema, args);
+  if (!v.success) {
+    return {
+      content: [{ type: "text", text: `Validation error: ${v.error}` }],
+      isError: true,
+    };
+  }
   const updates: UpdateOptions = {
-    content: args.content,
-    tags: args.tags,
-    importance: args.importance,
+    what: v.data.content,
+    tags: v.data.tags,
+    importance: v.data.importance,
   };
-
-  const result = await updateMemory(args.entry_id, updates);
+  const result = await updateMemory(v.data.entry_id, updates);
 
   return {
     content: [

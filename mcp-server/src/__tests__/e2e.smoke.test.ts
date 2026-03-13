@@ -11,8 +11,10 @@ import { existsSync } from "fs";
 import { storeMemory } from "../memory/store.js";
 import { retrieveContext } from "../memory/retrieve.js";
 import { consolidateMemory } from "../memory/consolidate.js";
-import { readMemoryFile } from "../storage/file-manager.js";
+import { forgetMemory } from "../memory/forget.js";
+import { readMemoryFile, findEntryById } from "../storage/file-manager.js";
 import { resolveFilePath } from "../storage/scope-resolver.js";
+import { resolveProjectRoot } from "../storage/scope-resolver.js";
 import type {
   MemoryEntry,
   StoreResult,
@@ -138,6 +140,30 @@ describe("End-to-end smoke test", () => {
     const today = new Date().toISOString().split("T")[0];
     await checkFile(MemoryLayer.Episodes, `${today}.md`, true);
 
+    // Step 3.5: Test duplicate rejection (TODO step 5-6)
+    const duplicateResult = await storeMemory(
+      "We decided to use PostgreSQL as our main database system.",
+      {
+        tags: ["database", "architecture"],
+        scope: MemoryScope.Project,
+      },
+    );
+    expect(duplicateResult.stored).toBe(false);
+    expect(duplicateResult.reason).toContain("duplicate");
+
+    // Step 3.6: Test contradiction warning (TODO step 7-8)
+    const contradictionResult = await storeMemory(
+      "We decided to use MongoDB as our primary database.",
+      {
+        tags: ["database", "architecture"],
+        scope: MemoryScope.Project,
+      },
+    );
+    expect(contradictionResult.stored).toBe(true);
+    expect(
+      contradictionResult.warning || contradictionResult.suggestion,
+    ).toBeTruthy();
+
     // Step 4: Retrieve context with each query type
     const retrievalTests = [
       {
@@ -175,7 +201,32 @@ describe("End-to-end smoke test", () => {
 
       // Verify token budget is respected
       expect(result.token_estimate).toBeLessThanOrEqual(4000); // Default max
+
+      // Verify output format (TODO step 12)
+      expect(result.context).toContain("##"); // Layer headers
+      expect(result.context).toMatch(/^###\s+/m); // MML headings
     }
+
+    // Step 4.5: Test list_memories (TODO step 14)
+    const { handleListMemories } = await import("../tools/list-memories.js");
+    const listResult = await handleListMemories({ scope: "project" });
+
+    expect(listResult.project).toBeDefined();
+    expect(listResult.project.total_entries).toBeGreaterThan(0);
+    expect(listResult.project.total_files).toBeGreaterThan(0);
+    expect(listResult.project.by_layer).toBeDefined();
+
+    // Step 4.6: Test forget_memory (TODO step 15-16)
+    const entryToForget = storedIds[1]; // Forget second entry
+    const forgetResult = await forgetMemory(entryToForget);
+
+    expect(forgetResult.forgotten).toBe(true);
+    expect(forgetResult.entry_id).toBe(entryToForget);
+    expect(forgetResult.was_in).toBeTruthy();
+
+    // Verify entry was actually removed
+    const verifyGone = await findEntryById(resolveProjectRoot(), entryToForget);
+    expect(verifyGone).toBeNull();
 
     // Step 5: Wait and store more entries to trigger consolidation
     // (In real usage, consolidation would be time-based)

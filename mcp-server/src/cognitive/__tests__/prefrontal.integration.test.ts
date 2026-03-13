@@ -271,11 +271,15 @@ describe("Amygdala Engine - Importance Scoring", () => {
       const existingEntries = [
         {
           id: "test_1",
-          content: "we're evaluating different database connection strategies",
+          title: "database-evaluation",
+          fields: { what: "we're evaluating different database connection strategies" },
+          what: "we're evaluating different database connection strategies",
           tags: ["database", "architecture"],
           importance: 0.8,
           created: new Date().toISOString(),
-          source: "conversation" as const,
+          layer: "working" as any,
+          scope: "project" as const,
+          filePath: "test.md",
         },
       ];
 

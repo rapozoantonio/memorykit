@@ -13,6 +13,16 @@ export enum MemoryLayer {
 }
 
 /**
+ * Acquisition context - tracks the cost of discovering this knowledge
+ */
+export interface AcquisitionContext {
+  /** Total tokens consumed to acquire this knowledge */
+  tokens_consumed: number;
+  /** Number of tool calls (searches, file reads) that produced this knowledge */
+  tool_calls: number;
+}
+
+/**
  * Memory scope: project-specific or global
  */
 export enum MemoryScope {
@@ -26,27 +36,61 @@ export enum MemoryScope {
 export type MemorySource = "conversation" | "manual" | "consolidation";
 
 /**
- * A single memory entry
+ * A single memory entry in MML (Markdown Memory Language) format
  */
 export interface MemoryEntry {
-  /** Unique identifier: e_{timestamp}_{hash} */
+  /** Unique identifier: generated from heading hash + created timestamp */
   id: string;
-  /** The actual memory content */
-  content: string;
-  /** Amygdala-calculated importance score (0.0-1.0) */
-  importance: number;
-  /** ISO 8601 creation timestamp */
-  created: string;
-  /** Categorization tags */
+  /** Entry title from ### heading */
+  title: string;
+  /** All key-value pairs from - **key**: value lines */
+  fields: Record<string, string>;
+  /** Required: what field (extracted from fields for convenience) */
+  what: string;
+  /** Required: categorization tags (parsed from comma-separated string) */
   tags: string[];
-  /** Origin of this memory */
-  source: MemorySource;
+  /** Required: Amygdala-calculated importance score (0.0-1.0) */
+  importance: number;
+  /** Required: ISO 8601 date string (YYYY-MM-DD or full timestamp) */
+  created: string;
+  /** Memory layer (inferred from file path) */
+  layer: MemoryLayer;
+  /** Memory scope (inferred from root path) */
+  scope: "project" | "global";
+  /** Source file path */
+  filePath: string;
+
+  // Optional MML fields (layer-specific)
+  /** Why field (common in decisions/facts) */
+  why?: string;
+  /** Rejected alternatives (decisions) */
+  rejected?: string;
+  /** Constraints (decisions) */
+  constraint?: string;
+  /** Do field (procedures) */
+  do?: string;
+  /** Don't field (procedures) */
+  dont?: string;
+  /** Symptom field (episodes/bugs) */
+  symptom?: string;
+  /** Fix field (episodes/bugs) */
+  fix?: string;
+  /** Root cause field (episodes) */
+  "root-cause"?: string;
+  /** Workaround field (episodes) */
+  workaround?: string;
+  /** File reference (episodes) */
+  file?: string;
+  /** Source of memory (for backward compatibility) */
+  source?: MemorySource;
   /** Last modification timestamp (optional) */
   updated?: string;
   /** Custom decay rate override (optional) */
   decay_rate?: number;
   /** Original layer if promoted (optional) */
   promoted_from?: MemoryLayer;
+  /** Acquisition context - cost to produce this knowledge (internal only) */
+  acquisition?: AcquisitionContext;
 }
 
 /**
@@ -99,6 +143,12 @@ export interface StoreResult {
   importance: number;
   tags: string[];
   entry_id: string;
+  /** Reason for rejection (if stored: false) */
+  reason?: string;
+  /** Suggestion for user (if stored: false or warning present) */
+  suggestion?: string;
+  /** Warning message (for contradictions, stored: true but flagged) */
+  warning?: string;
 }
 
 /**
@@ -109,6 +159,7 @@ export interface StoreOptions {
   layer?: MemoryLayer;
   scope?: MemoryScope;
   file_hint?: string;
+  acquisition_context?: AcquisitionContext;
 }
 
 /**
@@ -122,6 +173,12 @@ export interface RetrieveResult {
   token_estimate: number;
   entries_returned: number;
   entries_available: number;
+  roi_stats: {
+    tokens_saved: number;
+    tool_calls_saved: number;
+    efficiency_percent: number;
+    is_estimated: boolean;
+  };
 }
 
 /**
@@ -131,6 +188,18 @@ export interface RetrieveOptions {
   max_tokens?: number;
   layers?: MemoryLayer[];
   scope?: "all" | "project" | "global";
+}
+
+/**
+ * A single action taken during consolidation
+ */
+export interface ConsolidationAction {
+  action: "promoted" | "pruned" | "compacted";
+  entry_id: string;
+  from?: MemoryLayer;
+  to?: MemoryLayer;
+  importance?: number;
+  reason?: string;
 }
 
 /**
@@ -157,7 +226,7 @@ export interface UpdateResult {
  * Options for update operation
  */
 export interface UpdateOptions {
-  content?: string;
+  what?: string;
   tags?: string[];
   importance?: number;
 }
@@ -169,28 +238,6 @@ export interface ForgetResult {
   forgotten: boolean;
   entry_id: string;
   was_in: string;
-}
-
-/**
- * Consolidation action detail
- */
-export interface ConsolidationAction {
-  action: "pruned" | "promoted" | "compacted" | "duplicates_flagged";
-  entry_id: string;
-  reason?: string;
-  from?: MemoryLayer;
-  to?: string;
-  importance?: number;
-}
-
-/**
- * Result of consolidation operation
- */
-export interface ConsolidateResult {
-  pruned: number;
-  promoted: number;
-  compacted: number;
-  details: ConsolidationAction[];
 }
 
 /**

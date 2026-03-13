@@ -4,6 +4,7 @@
 
 import type { StoreOptions } from "../types/memory.js";
 import { storeMemory } from "../memory/store.js";
+import { validateInput, StoreMemorySchema } from "../types/validation.js";
 
 export const storeMemoryTool = {
   name: "store_memory",
@@ -36,20 +37,43 @@ export const storeMemoryTool = {
         type: "string",
         description: 'Suggest target file within layer (e.g., "technology")',
       },
+      acquisition_context: {
+        type: "object",
+        description: "Cost to acquire this knowledge (for ROI tracking)",
+        properties: {
+          tokens_consumed: {
+            type: "number",
+            description: "Total tokens spent discovering this knowledge",
+          },
+          tool_calls: {
+            type: "number",
+            description:
+              "Number of tool calls (searches, reads) that produced this",
+          },
+        },
+        required: ["tokens_consumed", "tool_calls"],
+      },
     },
     required: ["content"],
   },
 };
 
-export async function handleStoreMemory(args: any): Promise<any> {
+export async function handleStoreMemory(args: unknown): Promise<any> {
+  const v = validateInput(StoreMemorySchema, args);
+  if (!v.success) {
+    return {
+      content: [{ type: "text", text: `Validation error: ${v.error}` }],
+      isError: true,
+    };
+  }
   const options: StoreOptions = {
-    tags: args.tags,
-    layer: args.layer,
-    scope: args.scope,
-    file_hint: args.file_hint,
+    tags: v.data.tags,
+    layer: v.data.layer as StoreOptions["layer"],
+    scope: v.data.scope as StoreOptions["scope"],
+    file_hint: v.data.file_hint,
+    acquisition_context: v.data.acquisition_context,
   };
-
-  const result = await storeMemory(args.content, options);
+  const result = await storeMemory(v.data.content, options);
 
   return {
     content: [

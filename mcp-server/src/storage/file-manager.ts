@@ -5,6 +5,40 @@
 import { readFile, writeFile, mkdir, readdir, stat, unlink } from "fs/promises";
 import { existsSync } from "fs";
 import { join, dirname, basename } from "path";
+
+// ─── Per-file write lock ────────────────────────────────────────────────────────
+// Serializes concurrent write operations on the same file path.
+// JavaScript is single-threaded so the get→set sequence has no race condition.
+
+const _writeLocks = new Map<string, Promise<void>>();
+
+async function acquireFileLock(filePath: string): Promise<() => void> {
+  const prev = _writeLocks.get(filePath);
+  let release!: () => void;
+  const current = new Promise<void>((res) => {
+    release = res;
+  });
+  _writeLocks.set(filePath, current);
+  if (prev) await prev;
+  return () => {
+    release();
+    if (_writeLocks.get(filePath) === current) {
+      _writeLocks.delete(filePath);
+    }
+  };
+}
+
+async function withFileLock<T>(
+  filePath: string,
+  fn: () => Promise<T>,
+): Promise<T> {
+  const release = await acquireFileLock(filePath);
+  try {
+    return await fn();
+  } finally {
+    release();
+  }
+}
 import type { MemoryEntry, FileInfo } from "../types/memory.js";
 import { MemoryLayer } from "../types/memory.js";
 import {
@@ -12,6 +46,60 @@ import {
   serializeEntries,
   extractHeader,
 } from "./entry-parser.js";
+
+/**
+ * Infer memory layer from file path
+ */
+function getLayerFromPath(filePath: string): MemoryLayer {
+  const normalized = filePath.replace(/\\/g, "/").toLowerCase();
+
+  if (normalized.includes("/working/")) return MemoryLayer.Working;
+  if (normalized.includes("/facts/")) return MemoryLayer.Facts;
+  if (normalized.includes("/episodes/")) return MemoryLayer.Episodes;
+  if (normalized.includes("/procedures/")) return MemoryLayer.Procedures;
+
+  // Default to working if we can't determine
+  return MemoryLayer.Working;
+}
+
+/**
+ * Infer scope from file path
+ * Global: ~/.memorykit/facts/...
+ * Project: ~/.memorykit/<projectName>/facts/...
+ */
+function getScopeFromPath(filePath: string): "project" | "global" {
+  const normalized = filePath.replace(/\\/g, "/");
+
+  // Find .memorykit in path
+  const memoryKitIndex = normalized.indexOf("/.memorykit/");
+  if (memoryKitIndex === -1) {
+    return "project"; // Not in .memorykit directory, assume project
+  }
+
+  // Extract the part after /.memorykit/
+  const afterMemoryKit = normalized.substring(
+    memoryKitIndex + "/.memorykit/".length,
+  );
+
+  // Split by / to get path segments
+  const segments = afterMemoryKit.split("/").filter((s) => s);
+
+  if (segments.length === 0) {
+    return "project"; // No segments, shouldn't happen
+  }
+
+  // Check if first segment is a layer name (indicates global scope)
+  const firstSegment = segments[0].toLowerCase();
+  const layerNames = ["working", "facts", "episodes", "procedures"];
+
+  if (layerNames.includes(firstSegment)) {
+    // Path is ~/.memorykit/<layer>/... → global scope
+    return "global";
+  }
+
+  // Path is ~/.memorykit/<projectName>/<layer>/... → project scope
+  return "project";
+}
 
 /**
  * Ensure directory exists, create if not
@@ -32,7 +120,9 @@ export async function readMemoryFile(filePath: string): Promise<MemoryEntry[]> {
 
   try {
     const content = await readFile(filePath, "utf-8");
-    return parseEntries(content);
+    const layer = getLayerFromPath(filePath);
+    const scope = getScopeFromPath(filePath);
+    return parseEntries(content, layer, scope, filePath);
   } catch (error) {
     console.error(`Failed to read memory file ${filePath}:`, error);
     return [];
@@ -61,106 +151,80 @@ export async function writeMemoryFile(
 }
 
 /**
- * Append a single entry to file
+ * Append a single entry to file (serialized per file path)
  */
 export async function appendEntry(
   filePath: string,
   entry: MemoryEntry,
 ): Promise<void> {
-  // Read existing entries
-  const existingEntries = await readMemoryFile(filePath);
-
-  // Extract header if file exists
-  let header: string | undefined;
-  if (existsSync(filePath)) {
-    const content = await readFile(filePath, "utf-8");
-    header = extractHeader(content);
-  }
-
-  // Add new entry
-  existingEntries.push(entry);
-
-  // Write back
-  await writeMemoryFile(filePath, existingEntries, header);
+  await withFileLock(filePath, async () => {
+    const existingEntries = await readMemoryFile(filePath);
+    let header: string | undefined;
+    if (existsSync(filePath)) {
+      const content = await readFile(filePath, "utf-8");
+      header = extractHeader(content);
+    }
+    existingEntries.push(entry);
+    await writeMemoryFile(filePath, existingEntries, header);
+  });
 }
 
 /**
- * Remove entry by ID from file
+ * Remove entry by ID from file (serialized per file path)
  */
 export async function removeEntry(
   filePath: string,
   entryId: string,
 ): Promise<boolean> {
-  if (!existsSync(filePath)) {
-    return false;
-  }
-
-  // Read existing entries
-  const entries = await readMemoryFile(filePath);
-
-  // Filter out the entry
-  const filteredEntries = entries.filter((e) => e.id !== entryId);
-
-  // Check if anything was removed
-  if (filteredEntries.length === entries.length) {
-    return false; // Entry not found
-  }
-
-  // If no entries left, delete the file
-  if (filteredEntries.length === 0) {
-    await unlink(filePath);
+  return withFileLock(filePath, async () => {
+    if (!existsSync(filePath)) {
+      return false;
+    }
+    const entries = await readMemoryFile(filePath);
+    const filteredEntries = entries.filter((e) => e.id !== entryId);
+    if (filteredEntries.length === entries.length) {
+      return false;
+    }
+    if (filteredEntries.length === 0) {
+      await unlink(filePath);
+      return true;
+    }
+    const content = await readFile(filePath, "utf-8");
+    const header = extractHeader(content);
+    await writeMemoryFile(filePath, filteredEntries, header);
     return true;
-  }
-
-  // Extract header
-  const content = await readFile(filePath, "utf-8");
-  const header = extractHeader(content);
-
-  // Write back remaining entries
-  await writeMemoryFile(filePath, filteredEntries, header);
-  return true;
+  });
 }
 
 /**
- * Update entry by ID in file
+ * Update entry by ID in file (serialized per file path)
  */
 export async function updateEntry(
   filePath: string,
   entryId: string,
   updates: Partial<MemoryEntry>,
 ): Promise<boolean> {
-  if (!existsSync(filePath)) {
-    return false;
-  }
-
-  // Read existing entries
-  const entries = await readMemoryFile(filePath);
-
-  // Find and update entry
-  let found = false;
-  const updatedEntries = entries.map((entry) => {
-    if (entry.id === entryId) {
-      found = true;
-      return {
-        ...entry,
-        ...updates,
-        updated: new Date().toISOString(),
-      };
+  return withFileLock(filePath, async () => {
+    if (!existsSync(filePath)) {
+      return false;
     }
-    return entry;
+    const entries = await readMemoryFile(filePath);
+    let found = false;
+    const updatedEntries = entries.map((entry) => {
+      if (entry.id === entryId) {
+        found = true;
+        return { ...entry, ...updates, updated: new Date().toISOString() };
+      }
+      return entry;
+    });
+    if (!found) {
+      return false;
+    }
+    const content = await readFile(filePath, "utf-8");
+    const header = extractHeader(content);
+    await writeMemoryFile(filePath, updatedEntries, header);
+    return true;
   });
-
-  if (!found) {
-    return false;
-  }
-
-  // Extract header
-  const content = await readFile(filePath, "utf-8");
-  const header = extractHeader(content);
-
-  // Write back
-  await writeMemoryFile(filePath, updatedEntries, header);
-  return true;
 }
 
 /**

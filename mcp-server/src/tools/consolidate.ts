@@ -4,6 +4,7 @@
 
 import type { ConsolidateOptions } from "../types/memory.js";
 import { consolidateMemory } from "../memory/consolidate.js";
+import { validateInput, ConsolidateSchema } from "../types/validation.js";
 
 export const consolidateTool = {
   name: "consolidate",
@@ -25,12 +26,18 @@ export const consolidateTool = {
   },
 };
 
-export async function handleConsolidate(args: any): Promise<any> {
+export async function handleConsolidate(args: unknown): Promise<any> {
+  const v = validateInput(ConsolidateSchema, args);
+  if (!v.success) {
+    return {
+      content: [{ type: "text", text: `Validation error: ${v.error}` }],
+      isError: true,
+    };
+  }
   const options: ConsolidateOptions = {
-    scope: args.scope,
-    dry_run: args.dry_run,
+    scope: v.data.scope,
+    dry_run: v.data.dry_run,
   };
-
   const result = await consolidateMemory(options);
 
   return {

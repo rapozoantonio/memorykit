@@ -4,6 +4,7 @@
 
 import type { RetrieveOptions } from "../types/memory.js";
 import { retrieveContext } from "../memory/retrieve.js";
+import { validateInput, RetrieveContextSchema } from "../types/validation.js";
 
 export const retrieveContextTool = {
   name: "retrieve_context",
@@ -39,20 +40,44 @@ export const retrieveContextTool = {
   },
 };
 
-export async function handleRetrieveContext(args: any): Promise<any> {
-  const options: RetrieveOptions = {
-    max_tokens: args.max_tokens,
-    layers: args.layers,
-    scope: args.scope,
-  };
+/**
+ * Format large numbers with thousands separator (54321 → 54k)
+ */
+function formatTokens(tokens: number): string {
+  if (tokens >= 1000) {
+    return `${Math.round(tokens / 1000)}k`;
+  }
+  return tokens.toString();
+}
 
-  const result = await retrieveContext(args.query, options);
+export async function handleRetrieveContext(args: unknown): Promise<any> {
+  const v = validateInput(RetrieveContextSchema, args);
+  if (!v.success) {
+    return {
+      content: [{ type: "text", text: `Validation error: ${v.error}` }],
+      isError: true,
+    };
+  }
+  const options: RetrieveOptions = {
+    max_tokens: v.data.max_tokens,
+    layers: v.data.layers as RetrieveOptions["layers"],
+    scope: v.data.scope as RetrieveOptions["scope"],
+  };
+  const result = await retrieveContext(v.data.query, options);
+
+  // Format ROI banner with clean markdown (no box-drawing chars)
+  const estimatedNote = result.roi_stats.is_estimated ? " *(estimated)*" : "";
+  const roiBanner = [
+    `🧠 **MemoryKit**: Found ${result.entries_returned} relevant memories (~${formatTokens(result.token_estimate)} tokens)`,
+    `💰 **Estimated savings**: ~${formatTokens(result.roi_stats.tokens_saved)} tokens, ~${result.roi_stats.tool_calls_saved} tool calls${estimatedNote}`,
+    `📈 **Efficiency**: ${result.roi_stats.efficiency_percent}%`,
+  ].join("\n");
 
   return {
     content: [
       {
         type: "text",
-        text: result.context,
+        text: `${roiBanner}\n${result.context}`,
       },
     ],
   };

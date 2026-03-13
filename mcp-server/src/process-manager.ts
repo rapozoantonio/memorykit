@@ -1,6 +1,9 @@
-import { spawn, ChildProcess } from "child_process";
-import { platform } from "os";
-import { join, dirname } from "path";
+/**
+ * @deprecated Not used in the current file-based MCP implementation.
+ * This was part of the legacy Docker/.NET API architecture.
+ * Will be removed in a future major version.
+ */
+export {};
 import { fileURLToPath } from "url";
 import axios from "axios";
 
@@ -66,7 +69,7 @@ export class ProcessManager {
   async start(): Promise<void> {
     if (this.externalApi) {
       console.error(
-        `[ProcessManager] Using external API at http://localhost:${this.port}`
+        `[ProcessManager] Using external API at http://localhost:${this.port}`,
       );
       await this.waitForHealthy();
     } else if (this.useDocker) {
@@ -78,7 +81,7 @@ export class ProcessManager {
 
   private async startDocker(): Promise<void> {
     console.error(
-      `[ProcessManager] Starting MemoryKit API via Docker on port ${this.port}...`
+      `[ProcessManager] Starting MemoryKit API via Docker on port ${this.port}...`,
     );
 
     // Check if Docker is available
@@ -88,8 +91,8 @@ export class ProcessManager {
         if (code !== 0) {
           reject(
             new Error(
-              "Docker is not available. Please install Docker Desktop or use --no-docker flag."
-            )
+              "Docker is not available. Please install Docker Desktop or use --no-docker flag.",
+            ),
           );
         } else {
           resolve();
@@ -112,7 +115,7 @@ export class ProcessManager {
     ];
 
     console.error(
-      `[ProcessManager] Running: docker-compose ${composeArgs.join(" ")}`
+      `[ProcessManager] Running: docker-compose ${composeArgs.join(" ")}`,
     );
 
     this.process = spawn("docker-compose", composeArgs, {
@@ -138,7 +141,7 @@ export class ProcessManager {
           resolve();
         } else {
           reject(
-            new Error(`Docker compose failed with code ${code}: ${output}`)
+            new Error(`Docker compose failed with code ${code}: ${output}`),
           );
         }
       });
@@ -151,7 +154,7 @@ export class ProcessManager {
 
   private async startExecutable(): Promise<void> {
     console.error(
-      `[ProcessManager] Starting .NET API executable on port ${this.port}...`
+      `[ProcessManager] Starting .NET API executable on port ${this.port}...`,
     );
 
     this.process = spawn(
@@ -169,7 +172,7 @@ export class ProcessManager {
           ASPNETCORE_ENVIRONMENT: "Production",
           // Storage provider now comes from appsettings.json or docker-compose.yml
         },
-      }
+      },
     );
 
     // Log output for debugging
@@ -193,7 +196,7 @@ export class ProcessManager {
 
   private async waitForHealthy(retries = 30, intervalMs = 1000): Promise<void> {
     console.error(
-      `[ProcessManager] Waiting for API health check at http://localhost:${this.port}/health...`
+      `[ProcessManager] Waiting for API health check at http://localhost:${this.port}/health...`,
     );
 
     for (let i = 0; i < retries; i++) {
@@ -202,7 +205,7 @@ export class ProcessManager {
           `http://localhost:${this.port}/health`,
           {
             timeout: 2000,
-          }
+          },
         );
         if (response.status === 200) {
           console.error("[ProcessManager] Health check passed!");
@@ -212,7 +215,7 @@ export class ProcessManager {
         // Expected during startup
         if (i % 5 === 0) {
           console.error(
-            `[ProcessManager] Health check attempt ${i + 1}/${retries}...`
+            `[ProcessManager] Health check attempt ${i + 1}/${retries}...`,
           );
         }
       }
@@ -240,7 +243,7 @@ export class ProcessManager {
       {
         stdio: "inherit",
         shell: true,
-      }
+      },
     );
 
     await new Promise<void>((resolve) => {

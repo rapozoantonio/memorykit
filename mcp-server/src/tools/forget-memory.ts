@@ -3,6 +3,7 @@
  */
 
 import { forgetMemory } from "../memory/forget.js";
+import { validateInput, ForgetMemorySchema } from "../types/validation.js";
 
 export const forgetMemoryTool = {
   name: "forget_memory",
@@ -19,8 +20,15 @@ export const forgetMemoryTool = {
   },
 };
 
-export async function handleForgetMemory(args: any): Promise<any> {
-  const result = await forgetMemory(args.entry_id);
+export async function handleForgetMemory(args: unknown): Promise<any> {
+  const v = validateInput(ForgetMemorySchema, args);
+  if (!v.success) {
+    return {
+      content: [{ type: "text", text: `Validation error: ${v.error}` }],
+      isError: true,
+    };
+  }
+  const result = await forgetMemory(v.data.entry_id);
 
   return {
     content: [

@@ -34,3 +34,9 @@ global:
 context:
   max_tokens_estimate: 4000
   prioritize_by: "importance"
+
+# Quality gate settings (write-time checks)
+quality_gates:
+  importance_floor: 0.15 # Reject entries scoring below this threshold
+  duplicate_jaccard_threshold: 0.6 # Tag overlap threshold for duplicate detection
+  duplicate_word_overlap: 3 # Minimum significant word overlap for duplicates

@@ -11,6 +11,7 @@ import {
   isProjectInitialized,
   isGlobalInitialized,
 } from "../storage/scope-resolver.js";
+import { validateInput, ListMemoriesSchema } from "../types/validation.js";
 
 export const listMemoriesTool = {
   name: "list_memories",
@@ -33,19 +34,22 @@ export const listMemoriesTool = {
   },
 };
 
-export async function handleListMemories(args: any): Promise<any> {
-  const result: ListResult = {};
-
-  // List project memories
-  if (args.scope !== "global" && isProjectInitialized()) {
-    const projectFiles = await listMemoryFiles(resolveProjectRoot());
-    result.project = groupByLayer(projectFiles, args.layer);
+export async function handleListMemories(args: unknown): Promise<any> {
+  const v = validateInput(ListMemoriesSchema, args);
+  if (!v.success) {
+    return {
+      content: [{ type: "text", text: `Validation error: ${v.error}` }],
+      isError: true,
+    };
   }
-
-  // List global memories
-  if (args.scope !== "project" && isGlobalInitialized()) {
+  const result: ListResult = {};
+  if (v.data.scope !== "global" && isProjectInitialized()) {
+    const projectFiles = await listMemoryFiles(resolveProjectRoot());
+    result.project = groupByLayer(projectFiles, v.data.layer);
+  }
+  if (v.data.scope !== "project" && isGlobalInitialized()) {
     const globalFiles = await listMemoryFiles(resolveGlobalRoot());
-    result.global = groupByLayer(globalFiles, args.layer);
+    result.global = groupByLayer(globalFiles, v.data.layer);
   }
 
   return {

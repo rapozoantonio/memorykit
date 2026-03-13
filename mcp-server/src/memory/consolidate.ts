@@ -186,7 +186,7 @@ async function processWorkingMemory(
  * Determine where to promote an entry
  */
 function determinePromotionTarget(entry: MemoryEntry): Layer {
-  const content = entry.content.toLowerCase();
+  const content = entry.what.toLowerCase();
 
   // Procedural patterns
   if (/\b(always|never|when|rule|pattern)\b/.test(content)) {
@@ -214,8 +214,8 @@ function determineTargetFile(layer: Layer, entry: MemoryEntry): string {
     case Layer.Episodes:
       return `${new Date(entry.created).toISOString().split("T")[0]}.md`;
     case Layer.Procedures:
-      if (entry.content.toLowerCase().includes("code")) return "code-style.md";
-      if (entry.content.toLowerCase().includes("debug")) return "debugging.md";
+      if (entry.what.toLowerCase().includes("code")) return "code-style.md";
+      if (entry.what.toLowerCase().includes("debug")) return "debugging.md";
       return "general.md";
     default:
       return "general.md";
@@ -258,7 +258,7 @@ async function compactEpisodes(
         });
 
         // Truncate to first 2 sentences
-        const sentences = entry.content.split(/[.!?]+/).filter((s) => s.trim());
+        const sentences = entry.what.split(/[.!?]+/).filter((s) => s.trim());
         const truncated = sentences.slice(0, 2).join(". ") + ".";
 
         return {

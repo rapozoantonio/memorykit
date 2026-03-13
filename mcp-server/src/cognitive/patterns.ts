@@ -205,7 +205,7 @@ export const DecisionVerbs = new Set([
   "implement",
 ]);
 
-// Common words to exclude from novelty detection
+// Common words to exclude from novelty/relevance detection
 export const CommonWords = new Set([
   "the",
   "and",
@@ -224,4 +224,36 @@ export const CommonWords = new Set([
   "which",
   "their",
   "there",
+  // Additional for relevance scoring
+  "a",
+  "an",
+  "is",
+  "are",
+  "was",
+  "were",
+  "be",
+  "has",
+  "had",
+  "do",
+  "does",
+  "did",
+  "may",
+  "might",
+  "can",
+  "what",
+  "how",
+  "when",
+  "where",
+  "who",
+  "we",
+  "i",
+  "you",
+  "it",
+  "to",
+  "of",
+  "in",
+  "on",
+  "at",
+  "use",
+  "using",
 ]);

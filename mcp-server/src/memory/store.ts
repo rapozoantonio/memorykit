@@ -19,6 +19,12 @@ import {
 } from "../storage/scope-resolver.js";
 import { loadConfig } from "../storage/config-loader.js";
 import { consolidateMemory } from "./consolidate.js";
+import { normalizeToMML } from "./normalizer.js";
+import {
+  checkImportanceFloor,
+  checkDuplicate,
+  checkContradiction,
+} from "./quality-gate.js";
 import { existsSync, readdirSync } from "fs";
 
 // Consolidation debouncing with status tracking
@@ -58,22 +64,96 @@ export async function storeMemory(
     recentTags: tags,
   });
 
+  // Gate 1: Importance Floor
+  const importanceFloor = config.quality_gates?.importance_floor ?? 0.15;
+  const floorCheck = checkImportanceFloor(importance, importanceFloor);
+  if (!floorCheck.pass) {
+    return {
+      stored: false,
+      layer: Layer.Working, // Default layer for rejected entries
+      file: "",
+      importance,
+      tags,
+      entry_id: "",
+      reason: floorCheck.reason,
+      suggestion: floorCheck.suggestion,
+    };
+  }
+
   // Determine layer (use provided or auto-detect)
   const layer = options.layer ?? determineLayer(content, importance, config);
 
+  // Normalize content to MML format
+  const normalized = normalizeToMML(
+    content,
+    layer,
+    importance,
+    tags,
+    options.acquisition_context,
+  );
+
   // Determine target file
-  const filename = options.file_hint ?? determineFilename(layer, tags, content);
+  const filename =
+    options.file_hint ?? determineFilename(layer, normalized.tags, content);
   const filePath = resolveFilePath(scope, layer, filename);
 
-  // Create entry
+  // Load existing entries from target file for quality gates
+  const existingInFile = await readMemoryFile(filePath);
+
+  // Gate 2: Duplicate Check
+  const dupeCheck = checkDuplicate(
+    { what: normalized.fields.what, tags: normalized.tags },
+    existingInFile,
+  );
+  if (!dupeCheck.pass) {
+    return {
+      stored: false,
+      layer,
+      file: filename,
+      importance: normalized.importance,
+      tags: normalized.tags,
+      entry_id: "",
+      reason: dupeCheck.reason,
+      suggestion: dupeCheck.suggestion,
+    };
+  }
+
+  // Gate 3: Contradiction Check (warns but doesn't block)
+  const contradictionCheck = checkContradiction(
+    { what: normalized.fields.what, tags: normalized.tags },
+    existingInFile,
+  );
+
+  // Create MML entry
   const entry: MemoryEntry = {
-    id: generateEntryId(content),
-    content,
-    importance,
-    created: new Date().toISOString(),
-    tags,
-    source: "conversation",
+    id: generateEntryId(normalized.title, normalized.fields.created),
+    title: normalized.title,
+    fields: normalized.fields,
+    what: normalized.fields.what,
+    tags: normalized.tags,
+    importance: normalized.importance,
+    created: normalized.fields.created,
+    layer,
+    scope: scope === Scope.Project ? "project" : "global",
+    filePath,
   };
+
+  // Add optional fields
+  if (normalized.fields.why) entry.why = normalized.fields.why;
+  if (normalized.fields.rejected) entry.rejected = normalized.fields.rejected;
+  if (normalized.fields.constraint)
+    entry.constraint = normalized.fields.constraint;
+  if (normalized.fields.do) entry.do = normalized.fields.do;
+  if (normalized.fields.dont) entry.dont = normalized.fields.dont;
+  if (normalized.fields.symptom) entry.symptom = normalized.fields.symptom;
+  if (normalized.fields.fix) entry.fix = normalized.fields.fix;
+  if (normalized.fields["root-cause"])
+    entry["root-cause"] = normalized.fields["root-cause"];
+  if (normalized.fields.workaround)
+    entry.workaround = normalized.fields.workaround;
+  if (normalized.fields.file) entry.file = normalized.fields.file;
+  if (options.acquisition_context)
+    entry.acquisition = options.acquisition_context;
 
   // Write entry
   await appendEntry(filePath, entry);
@@ -101,9 +181,11 @@ export async function storeMemory(
     stored: true,
     layer,
     file: filename,
-    importance,
-    tags,
+    importance: normalized.importance,
+    tags: normalized.tags,
     entry_id: entry.id,
+    warning: contradictionCheck.reason,
+    suggestion: contradictionCheck.suggestion,
   };
 }
 

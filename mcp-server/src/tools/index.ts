@@ -1,11 +1,10 @@
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
-import { MemoryKitApiClient } from "../api-client.js";
-
-export function registerTools(server: Server, apiClient: MemoryKitApiClient) {
+/**
+ * @deprecated Not used in the current file-based MCP implementation.
+ * This was the tool registration file for the legacy Docker/.NET API architecture.
+ * The current tools are registered in src/server.ts via the individual tool files.
+ * Will be removed in a future major version.
+ */
+export {};
   // List available tools
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
     tools: [

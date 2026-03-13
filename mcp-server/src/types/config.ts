@@ -59,6 +59,15 @@ export interface ContextConfig {
 }
 
 /**
+ * Quality gates configuration for memory storage
+ */
+export interface QualityGatesConfig {
+  importance_floor: number;
+  duplicate_jaccard_threshold: number;
+  duplicate_word_overlap: number;
+}
+
+/**
  * Complete MemoryKit configuration
  */
 export interface MemoryKitConfig {
@@ -70,6 +79,7 @@ export interface MemoryKitConfig {
   consolidation: ConsolidationConfig;
   global: GlobalConfig;
   context: ContextConfig;
+  quality_gates?: QualityGatesConfig;
 }
 
 /**
