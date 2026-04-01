@@ -1,0 +1,17 @@
+# Source files (dist/ is the published output)
+src/
+
+# Dead code — legacy Docker/.NET API architecture (not used)
+test-docker.js
+
+# Artifact from accidental CLI invocation
+-p/
+
+# Dev & config files
+tsconfig.json
+*.log
+.DS_Store
+.gitignore
+
+# Test runner config (not needed at runtime)
+vitest.config.ts

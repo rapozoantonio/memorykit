@@ -1,11 +1,10 @@
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
-import { MemoryKitApiClient } from "../api-client.js";
-
-export function registerTools(server: Server, apiClient: MemoryKitApiClient) {
+/**
+ * @deprecated Not used in the current file-based MCP implementation.
+ * This was the tool registration file for the legacy Docker/.NET API architecture.
+ * The current tools are registered in src/server.ts via the individual tool files.
+ * Will be removed in a future major version.
+ */
+export {};
   // List available tools
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
     tools: [
@@ -25,22 +24,6 @@ export function registerTools(server: Server, apiClient: MemoryKitApiClient) {
             },
           },
           required: ["conversation_id", "role", "content"],
-        },
-      },
-      {
-        name: "retrieve_memory",
-        description: "Retrieve messages from conversation memory",
-        inputSchema: {
-          type: "object",
-          properties: {
-            conversation_id: { type: "string" },
-            limit: { type: "number", description: "Max messages to return" },
-            layer: {
-              type: "string",
-              enum: ["working", "semantic", "episodic"],
-            },
-          },
-          required: ["conversation_id"],
         },
       },
       {
@@ -121,7 +104,7 @@ export function registerTools(server: Server, apiClient: MemoryKitApiClient) {
               role: args.role as "user" | "assistant",
               content: args.content as string,
               tags: args.tags as string[] | undefined,
-            }
+            },
           );
           return {
             content: [
@@ -132,31 +115,10 @@ export function registerTools(server: Server, apiClient: MemoryKitApiClient) {
             ],
           };
 
-        case "retrieve_memory":
-          const messagesResponse = await apiClient.retrieveMessages(
-            args.conversation_id as string,
-            args.limit as number | undefined,
-            args.layer as string | undefined
-          );
-          return {
-            content: [
-              {
-                type: "text",
-                text: `Retrieved ${
-                  messagesResponse.Total
-                } message(s):\n${JSON.stringify(
-                  messagesResponse.Messages,
-                  null,
-                  2
-                )}`,
-              },
-            ],
-          };
-
         case "search_memory":
           const searchResults = await apiClient.searchMemory(
             args.conversation_id as string,
-            args.query as string
+            args.query as string,
           );
           return {
             content: [
@@ -167,7 +129,7 @@ export function registerTools(server: Server, apiClient: MemoryKitApiClient) {
                 }\n\nSources: ${JSON.stringify(
                   searchResults.Sources,
                   null,
-                  2
+                  2,
                 )}`,
               },
             ],
@@ -176,7 +138,7 @@ export function registerTools(server: Server, apiClient: MemoryKitApiClient) {
         case "forget_memory":
           await apiClient.forgetMessage(
             args.conversation_id as string,
-            args.message_id as string
+            args.message_id as string,
           );
           return {
             content: [{ type: "text", text: "Message deleted successfully" }],
@@ -185,7 +147,7 @@ export function registerTools(server: Server, apiClient: MemoryKitApiClient) {
         case "consolidate":
           const stats = await apiClient.consolidate(
             args.conversation_id as string,
-            (args.force as boolean) || false
+            (args.force as boolean) || false,
           );
           return {
             content: [
@@ -194,7 +156,7 @@ export function registerTools(server: Server, apiClient: MemoryKitApiClient) {
                 text: `Consolidation complete: ${JSON.stringify(
                   stats,
                   null,
-                  2
+                  2,
                 )}`,
               },
             ],
@@ -202,7 +164,7 @@ export function registerTools(server: Server, apiClient: MemoryKitApiClient) {
 
         case "get_context":
           const contextResponse = await apiClient.getContext(
-            args.conversation_id as string
+            args.conversation_id as string,
           );
           return {
             content: [

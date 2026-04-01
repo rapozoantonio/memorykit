@@ -1,510 +1,314 @@
 # MemoryKit MCP Server
 
-**Give Claude Desktop persistent memory across conversations.**
+**Cognitive memory for AI coding assistants** — gives Claude Desktop, VS Code Copilot, and Cursor persistent memory across conversations. No database, no Docker, no API keys required.
+
+---
+
+## How It Works
+
+MemoryKit stores memories as Markdown files on your local filesystem using a brain-inspired 4-layer architecture:
+
+| Layer          | What it stores                             | Lifetime                              |
+| -------------- | ------------------------------------------ | ------------------------------------- |
+| **Working**    | Active session context, in-progress tasks  | Short-lived (decays after 7 days)     |
+| **Facts**      | Architecture decisions, tech stack choices | Permanent                             |
+| **Episodes**   | Bugs found, incidents, debugging sessions  | Medium-term (compacted after 30 days) |
+| **Procedures** | Coding rules, conventions, how-to guides   | Permanent                             |
+
+Memories are stored under `~/.memorykit/<project-name>/` — isolated per project via automatic git root detection. No configuration required for basic use.
 
 ---
 
 ## Quick Start
 
-```bash
-# 1. Prerequisites: Docker Desktop + Node.js 18+
-
-# 2. Build Docker image
-cd memorykit
-docker build -t memorykit-api .
-
-# 3. Install MCP server
-cd mcp-server
-npm install && npm run build
-npm link
-
-# 4. Configure Claude Desktop
-# Edit: %APPDATA%\Claude\claude_desktop_config.json (Windows)
-# Add MCP server config (see Configuration below)
-
-# 5. Restart Claude Desktop
-```
-
-**First successful result:** ~5 minutes
-
----
-
-## What It Does
-
-The MemoryKit MCP Server enables Claude to:
-
-| Feature            | Description                        |
-| ------------------ | ---------------------------------- |
-| 💾 **Store**       | Save memories from conversations   |
-| 🔍 **Search**      | Find past interactions             |
-| 🧠 **Context**     | Get relevant context automatically |
-| 🗑️ **Forget**      | Delete specific memories           |
-| 📦 **Consolidate** | Optimize memory for efficiency     |
-
-## Architecture
-
-```
-Claude Desktop
-     │ MCP Protocol (stdio)
-     ↓
-TypeScript MCP Server (Node.js)
-     ├─ 6 MCP Tools
-     ├─ API Client (HTTP)
-     └─ Process Manager (Docker)
-          │
-          ↓
-     Docker Container
-          └─ .NET API (port 5555)
-               └─ MemoryKit Core
-```
-
-## Prerequisites
-
-| Requirement        | Version | Download                                                                              |
-| ------------------ | ------- | ------------------------------------------------------------------------------------- |
-| **Docker Desktop** | Latest  | [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop/) |
-| **Node.js**        | 18+     | [nodejs.org](https://nodejs.org/)                                                     |
-| **Claude Desktop** | Latest  | [claude.ai/download](https://claude.ai/download)                                      |
-
-**Verify installation:**
+### 1. Install
 
 ```bash
-docker --version  # Should show Docker version
-node --version    # Should show v18.x or higher
+npm install -g memorykit
 ```
 
-## Installation
-
-### Step 1: Clone & Build
+### 2. Initialize in your project
 
 ```bash
-# Clone repository
-git clone https://github.com/yourusername/memorykit.git
-cd memorykit
-
-# Build Docker image
-docker build -t memorykit-api .
-
-# Build MCP server
-cd mcp-server
-npm install
-npm run build
-npm link  # Makes globally available
+cd /your/project
+memorykit init
 ```
 
-### Step 2: Configure Claude Desktop
+This creates `~/.memorykit/<project-name>/` and generates `.vscode/mcp.json` for VS Code automatically.
 
-**Config file location:**
+### 3. Configure your AI assistant
+
+**Claude Desktop** — Edit the config file:
 
 | OS      | Path                                                              |
 | ------- | ----------------------------------------------------------------- |
 | Windows | `%APPDATA%\Claude\claude_desktop_config.json`                     |
-| Mac     | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| macOS   | `~/Library/Application Support/Claude/claude_desktop_config.json` |
 | Linux   | `~/.config/Claude/claude_desktop_config.json`                     |
-
-**Add this configuration:**
 
 ```json
 {
   "mcpServers": {
     "memorykit": {
-      "command": "node",
-      "args": ["/ABSOLUTE/PATH/TO/memorykit/mcp-server/dist/index.js"],
+      "command": "memorykit",
       "env": {
-        "DOCKER_COMPOSE_PATH": "/ABSOLUTE/PATH/TO/memorykit/docker-compose.yml"
+        "MEMORYKIT_PROJECT": "/absolute/path/to/your/project"
       }
     }
   }
 }
 ```
 
-⚠️ **Important:** Replace `/ABSOLUTE/PATH/TO/memorykit` with your actual path.
+**VS Code with Copilot** — `memorykit init` creates `.vscode/mcp.json` automatically with `${workspaceFolder}` as the project path.
 
-### Step 3: Restart Claude Desktop
+**Cursor** — Add to Cursor MCP settings using the same format as Claude Desktop.
 
-1. Close all Claude Desktop windows
-2. Quit the application completely
-3. Reopen Claude Desktop
-4. MCP tools should appear in the interface
+### 4. Restart your AI assistant
+
+The 6 MemoryKit tools will appear in the tool list.
+
+---
 
 ## Available Tools
 
-### Tool Reference
+### `store_memory`
 
-| Tool                 | Purpose          | Key Parameters                  |
-| -------------------- | ---------------- | ------------------------------- |
-| `store_memory`       | Save a message   | role, content, conversationId\* |
-| `retrieve_memory`    | Get messages     | conversationId, skip*, take*    |
-| `search_memory`      | Semantic search  | query, conversationId           |
-| `get_context`        | Get full context | conversationId, query           |
-| `forget_memory`      | Delete message   | conversationId, messageId       |
-| `consolidate_memory` | Optimize storage | conversationId                  |
+Save a new memory entry. Importance is scored automatically (0.0–1.0) and the correct layer is selected based on content type.
 
-\*Optional parameters
-
-### Usage Examples
-
-**Store a memory:**
-
-```
-Use store_memory to remember: "User prefers TypeScript over JavaScript"
-```
-
-**Retrieve memories:**
-
-```
-Use retrieve_memory to get the last 5 messages from conversation abc123
-```
-
-**Search memories:**
-
-```
-Use search_memory to find all mentions of "TypeScript" in conversation abc123
-
-Search across all memories using semantic search.
-
-**Parameters:**
-
-- `query` (string, required): The search query
-- `conversationId` (string, optional): Limit search to specific conversation
+| Parameter             | Type     | Required | Description                                                             |
+| --------------------- | -------- | -------- | ----------------------------------------------------------------------- |
+| `content`             | string   | ✅       | The memory content                                                      |
+| `tags`                | string[] | ❌       | Categorization tags (auto-detected if omitted)                          |
+| `layer`               | enum     | ❌       | `working`, `facts`, `episodes`, `procedures` (auto-detected if omitted) |
+| `scope`               | enum     | ❌       | `project` (default) or `global`                                         |
+| `file_hint`           | string   | ❌       | Target filename within layer (e.g. `"technology"`)                      |
+| `acquisition_context` | object   | ❌       | ROI tracking: `{ tokens_consumed: number, tool_calls: number }`         |
 
 **Example:**
 
-```
-
-Use search_memory to find: "What did we discuss about databases?"
-
-```
-
-### 4. get_context
-
-Get relevant context for the current conversation.
-
-**Parameters:**
-
-- `conversationId` (string, required): The conversation ID
-- `query` (string, optional): Query to filter context
-
-**Example:**
-
-```
-
-Use get_context to get relevant background for conversation abc123
-
-```
-
-### 5. forget_memory
-
-Delete a specific message from memory.
-
-**Parameters:**
-
-- `conversationId` (string, required): The conversation ID
-- `messageId` (string, required): The message ID to delete
-
-**Example:**
-
-```
-
-Use forget_memory to delete message xyz789 from conversation abc123
-
-```
-
-### 6. consolidate
-
-Consolidate old memories to save space.
-
-**Parameters:**
-
-- `conversationId` (string, required): The conversation ID
-- `force` (boolean, optional): Force consolidation even if threshold not met
-
-**Example:**
-
-```
-
-Use consolidate on conversation abc123 to compress old memories
-
-````
-
-## Testing
-
-### Run All Tests
-
-```bash
-npm test
-````
-
-This runs:
-
-- `test-docker.js` - Docker infrastructure tests
-- `test-api-client.js` - API client tests
-- `test-mcp-tools.js` - MCP tools integration tests
-
-### Test Docker Infrastructure
-
-```bash
-node test-docker.js
-```
-
-Verifies:
-
-- Process manager can start Docker container
-- API becomes healthy
-- Health endpoint responds correctly
-
-### Test API Client
-
-```bash
-node test-api-client.js
-```
-
-Tests all API endpoints:
-
-- Create conversation
-- Store messages
-- Retrieve messages
-- Search/query
-- Get context
-- Consolidate
-- Delete messages
-
-### Test MCP Tools
-
-```bash
-node test-mcp-tools.js
-```
-
-Comprehensive test suite with 9 test cases covering all tool functionality.
-
-## Troubleshooting
-
-### Docker Container Won't Start
-
-**Problem:** `Error: Docker container failed to start`
-
-**Solutions:**
-
-1. Ensure Docker Desktop is running
-2. Check if port 5555 is available:
-   ```bash
-   netstat -ano | findstr :5555    # Windows
-   lsof -i :5555                    # Mac/Linux
-   ```
-3. Verify Docker image exists:
-   ```bash
-   docker images | grep memorykit-api
-   ```
-4. Check Docker logs:
-   ```bash
-   docker logs memorykit-mcp-api
-   ```
-
-### Tools Not Appearing in Claude Desktop
-
-**Problem:** MCP tools don't show up in Claude Desktop UI
-
-**Solutions:**
-
-1. Verify configuration file syntax (valid JSON)
-2. Check paths are absolute, not relative
-3. Restart Claude Desktop after config changes
-4. Check Claude Desktop logs for errors
-5. Verify npm link was successful:
-   ```bash
-   npm list -g memorykit-mcp-server
-   ```
-
-### API Connection Errors
-
-**Problem:** `Error connecting to API: connect ECONNREFUSED`
-
-**Solutions:**
-
-1. Verify container is running:
-   ```bash
-   docker ps | grep memorykit-mcp-api
-   ```
-2. Check container health:
-   ```bash
-   docker inspect memorykit-mcp-api | grep Health
-   ```
-3. Test health endpoint manually:
-   ```bash
-   curl http://localhost:5555/health
-   ```
-4. Restart the container:
-   ```bash
-   docker-compose --profile mcp restart mcp-api
-   ```
-
-### Permission Errors on Linux/Mac
-
-**Problem:** `EACCES: permission denied`
-
-**Solutions:**
-
-1. Run Docker as non-root user (add user to docker group)
-2. Use sudo for npm link (not recommended)
-3. Change npm global directory ownership
-
-### Port Already in Use
-
-**Problem:** `Error: listen EADDRINUSE: address already in use 0.0.0.0:5555`
-
-**Solutions:**
-
-1. Stop existing container:
-   ```bash
-   docker stop memorykit-mcp-api
-   ```
-2. Change port in `docker-compose.yml` and `appsettings.json`
-3. Kill process using port 5555:
-
-   ```bash
-   # Windows
-   netstat -ano | findstr :5555
-   taskkill /PID <PID> /F
-
-   # Mac/Linux
-   lsof -i :5555
-   kill -9 <PID>
-   ```
-
-## Development
-
-### Project Structure
-
-```
-mcp-server/
-├── src/
-│   ├── index.ts              # Main entry point
-│   ├── process-manager.ts    # Docker lifecycle management
-│   ├── api-client.ts         # HTTP client for .NET API
-│   └── tools/
-│       └── index.ts          # MCP tool handlers
-├── dist/                     # Compiled JavaScript
-├── test-docker.js            # Docker tests
-├── test-api-client.js        # API tests
-├── test-mcp-tools.js         # Integration tests
-├── package.json
-├── tsconfig.json
-└── README.md
-```
-
-### Development Mode
-
-```bash
-npm run dev
-```
-
-### Adding New Tools
-
-1. Add tool definition to `src/tools/index.ts`:
-
-```typescript
-server.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: [
-    // ... existing tools
-    {
-      name: "my_new_tool",
-      description: "Description of what it does",
-      inputSchema: {
-        type: "object",
-        properties: {
-          param1: {
-            type: "string",
-            description: "Description of param1",
-          },
-        },
-        required: ["param1"],
-      },
-    },
-  ],
-}));
-```
-
-2. Add handler in the `CallToolRequestSchema` switch:
-
-```typescript
-case "my_new_tool": {
-  const result = await client.myNewMethod(args.param1);
-  return {
-    content: [{ type: "text", text: JSON.stringify(result, null, 2) }]
-  };
+```json
+{
+  "content": "We decided to use PostgreSQL as the primary database because of ACID guarantees and existing team expertise.",
+  "tags": ["database", "architecture"],
+  "acquisition_context": { "tokens_consumed": 1200, "tool_calls": 3 }
 }
 ```
 
-3. Add method to API client if needed (`src/api-client.ts`)
+---
 
-4. Rebuild and test:
+### `retrieve_context`
 
-```bash
-npm run build
-npm test
+Get relevant memory context for a query. The Prefrontal Controller classifies your query and routes to the appropriate memory layers automatically.
+
+| Parameter    | Type     | Required | Description                             |
+| ------------ | -------- | -------- | --------------------------------------- |
+| `query`      | string   | ✅       | Natural language question or topic      |
+| `max_tokens` | number   | ❌       | Token budget override (default: 4000)   |
+| `layers`     | string[] | ❌       | Restrict to specific layers             |
+| `scope`      | enum     | ❌       | `all` (default), `project`, or `global` |
+
+**Example:**
+
+```json
+{
+  "query": "what database are we using and why?",
+  "scope": "all"
+}
 ```
 
-### Debugging
+---
 
-Enable verbose logging:
+### `update_memory`
+
+Modify an existing memory entry by ID.
+
+| Parameter    | Type     | Required | Description                          |
+| ------------ | -------- | -------- | ------------------------------------ |
+| `entry_id`   | string   | ✅       | Entry ID to update                   |
+| `content`    | string   | ❌       | New content                          |
+| `tags`       | string[] | ❌       | Updated tags                         |
+| `importance` | number   | ❌       | Manual importance override (0.0–1.0) |
+
+---
+
+### `forget_memory`
+
+Delete a memory entry by ID.
+
+| Parameter  | Type   | Required | Description        |
+| ---------- | ------ | -------- | ------------------ |
+| `entry_id` | string | ✅       | Entry ID to delete |
+
+---
+
+### `consolidate`
+
+Run memory maintenance: prune stale working memory, promote high-importance entries to long-term layers, and compact old episode files.
+
+| Parameter | Type    | Required | Description                             |
+| --------- | ------- | -------- | --------------------------------------- |
+| `scope`   | enum    | ❌       | `project` (default), `global`, or `all` |
+| `dry_run` | boolean | ❌       | Preview changes without modifying files |
+
+---
+
+### `list_memories`
+
+Browse the memory structure and see entry counts per layer.
+
+| Parameter | Type | Required | Description                             |
+| --------- | ---- | -------- | --------------------------------------- |
+| `scope`   | enum | ❌       | `all` (default), `project`, or `global` |
+| `layer`   | enum | ❌       | Filter to a specific layer              |
+
+---
+
+## Memory Quality Gates
+
+MemoryKit filters low-quality entries automatically before storing:
+
+1. **Importance Floor** — Content scoring below 0.15 is rejected as routine or trivial.
+2. **Duplicate Detection** — Near-duplicate entries are blocked; the existing entry ID is returned so you can update it instead.
+3. **Contradiction Warning** — If new content potentially conflicts with existing knowledge, storage proceeds but a warning is returned.
+
+---
+
+## CLI Commands
 
 ```bash
-export DEBUG=memorykit:*    # Mac/Linux
-set DEBUG=memorykit:*       # Windows cmd
-$env:DEBUG="memorykit:*"    # Windows PowerShell
+# Initialize memory for the current project
+memorykit init
+
+# Initialize global memory shared across all projects
+memorykit init --global
+
+# Show memory statistics (entry counts, file sizes, last consolidation)
+memorykit status
+
+# Run memory consolidation (prune stale, promote important, compact old episodes)
+memorykit consolidate
+
+# Preview consolidation without making changes
+memorykit consolidate --dry-run
 ```
 
-Run with Node.js inspector:
+---
 
-```bash
-node --inspect dist/index.js
+## Configuration
+
+After `memorykit init`, a `memorykit.yaml` is created at `~/.memorykit/<project-name>/memorykit.yaml`:
+
+```yaml
+version: "0.1"
+
+working:
+  max_entries: 50
+  decay_threshold_days: 7
+  promotion_threshold: 0.70
+
+facts:
+  max_entries_per_file: 100
+
+episodes:
+  compaction_after_days: 30
+
+consolidation:
+  auto: true
+  interval_minutes: 0
+
+global:
+  enabled: true
+  priority: "project"
+
+context:
+  max_tokens_estimate: 4000
+
+quality_gates:
+  importance_floor: 0.15
+  duplicate_jaccard_threshold: 0.6
+  duplicate_word_overlap: 3
 ```
+
+---
+
+## Storage Layout
+
+```
+~/.memorykit/
+├── <project-name>/
+│   ├── memorykit.yaml
+│   ├── working/
+│   │   └── session.md
+│   ├── facts/
+│   │   ├── architecture.md
+│   │   ├── technology.md
+│   │   └── general.md
+│   ├── episodes/
+│   │   └── 2026-03-04.md
+│   └── procedures/
+│       └── general.md
+└── facts/                       # Global memory (shared across all projects)
+    └── ...
+```
+
+---
+
+## Architecture
+
+```
+AI Assistant (Claude / Copilot / Cursor)
+     │  MCP Protocol (stdio)
+     ↓
+MemoryKit MCP Server (Node.js)
+     ├── Prefrontal Controller   Query classification & file routing
+     ├── Amygdala Engine         Importance scoring (9-signal, 0.0–1.0)
+     ├── Quality Gates           Importance floor, duplicate detection, contradiction warning
+     ├── Normalizer              Prose-to-MML normalization pipeline
+     └── File Storage            Local Markdown files (~/.memorykit/)
+```
+
+**Query Classification** (Prefrontal): Routes `retrieve_context` queries to the right files:
+
+- _Continuation_ → `working/session.md`
+- _Fact retrieval_ → `facts/*.md`
+- _Deep recall_ → `episodes/*.md`
+- _Procedural_ → `procedures/*.md`
+- _Complex_ → all layers
+
+**Importance Scoring** (Amygdala): 9 signals scored 0.0–1.0 — decision language, explicit importance markers, code blocks, technical depth, novelty, sentiment, conversation context, question patterns, and MML structure.
+
+---
 
 ## Environment Variables
 
-- `DOCKER_COMPOSE_PATH` - Path to docker-compose.yml (auto-detected if not set)
-- `MEMORYKIT_API_URL` - Override API URL (default: http://localhost:5555)
-- `MEMORYKIT_API_KEY` - API authentication key (default: mcp-local-key)
-- `DEBUG` - Enable debug logging (e.g., `memorykit:*`)
+| Variable            | Description                   | Default                     |
+| ------------------- | ----------------------------- | --------------------------- |
+| `MEMORYKIT_PROJECT` | Absolute path to project root | Auto-detected from git root |
 
-## Limitations (v0.1)
+---
 
-- **InMemory Storage Only** - Data is lost when container stops
-- **Single User** - No multi-tenant support
-- **No Encryption** - Conversations stored in plaintext
-- **Fixed Port** - Runs on port 5555 (configurable but requires rebuild)
-- **Docker Required** - Cannot run without Docker Desktop
+## Requirements
 
-## Roadmap
+- Node.js 18+
+- No database required
+- No Docker required
+- No API keys required
 
-### v0.2
-
-- Azure storage providers (Redis, Table Storage, AI Search)
-- Dynamic port allocation
-- Multi-user support
-- Data export/import
-
-### v0.3
-
-- Encryption at rest
-- WebSocket support for real-time updates
-- CLI tool for management
+---
 
 ## Contributing
 
-Contributions welcome! Please read [CONTRIBUTING.md](../CONTRIBUTING.md) first.
+See [CONTRIBUTING.md](../CONTRIBUTING.md).
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
-MIT - see [LICENSE](../LICENSE) for details.
+MIT — see [LICENSE](LICENSE) for details.
 
 ## Support
 
-- **Issues:** [GitHub Issues](https://github.com/yourusername/memorykit/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/yourusername/memorykit/discussions)
-
-## Acknowledgments
-
-- Built with [Model Context Protocol SDK](https://github.com/anthropics/mcp)
-- Powered by [MemoryKit .NET Core](../README.md)
-- Inspired by cognitive memory models
+- Issues: [GitHub Issues](https://github.com/antonio-rapozo/memorykit/issues)
+- Discussions: [GitHub Discussions](https://github.com/antonio-rapozo/memorykit/discussions)
