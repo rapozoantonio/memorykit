@@ -181,7 +181,7 @@ POST /api/v1/conversations/{id}/query
 // ✅ Uses only 600 tokens (not 50,000!)
 ```
 
-👉 **See [QUICKSTART.md](QUICKSTART.md) for detailed setup.**
+👉 **See [QUICKSTART.md](docs/QUICKSTART.md) for detailed setup.**
 
 ---
 

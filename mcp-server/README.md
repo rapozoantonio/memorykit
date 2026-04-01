@@ -1,6 +1,6 @@
 # MemoryKit MCP Server
 
-**Cognitive memory for AI coding assistants** — gives Claude Desktop, VS Code Copilot, and Cursor persistent memory across conversations. No database, no Docker, no API keys required.
+**Cognitive memory for AI coding assistants** — gives Claude Desktop, Claude Code, GitHub Copilot, and Cursor persistent memory across conversations. No database, no Docker, no API keys required.
 
 ---
 
@@ -34,9 +34,13 @@ cd /your/project
 memorykit init
 ```
 
-This creates `~/.memorykit/<project-name>/` and generates `.vscode/mcp.json` for VS Code automatically.
+This creates `~/.memorykit/<project-name>/` and generates `.vscode/mcp.json` (for GitHub Copilot) and `.mcp.json` (for Claude Code) automatically.
 
 ### 3. Configure your AI assistant
+
+**GitHub Copilot in VS Code** — Already configured! `memorykit init` creates `.vscode/mcp.json` automatically.
+
+**Claude Code in VS Code** — Already configured! `memorykit init` creates `.mcp.json` automatically.
 
 **Claude Desktop** — Edit the config file:
 
@@ -58,8 +62,6 @@ This creates `~/.memorykit/<project-name>/` and generates `.vscode/mcp.json` for
   }
 }
 ```
-
-**VS Code with Copilot** — `memorykit init` creates `.vscode/mcp.json` automatically with `${workspaceFolder}` as the project path.
 
 **Cursor** — Add to Cursor MCP settings using the same format as Claude Desktop.
 

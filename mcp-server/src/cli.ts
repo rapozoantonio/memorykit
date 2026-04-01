@@ -86,10 +86,36 @@ export async function initCommand(options: {
 
       writeFileSync(mcpConfigPath, JSON.stringify(mcpConfig, null, 2), "utf-8");
 
-      console.log(`\n✅ Created VS Code MCP config: ${mcpConfigPath}`);
+      console.log(`\n✅ Created VS Code Copilot config: ${mcpConfigPath}`);
       console.log(`💡 Reload VS Code for changes to take effect`);
     } else {
       console.log(`\n⚠️  .vscode/mcp.json already exists, skipping`);
+    }
+
+    // Create .mcp.json for Claude Code (project-scoped MCP config)
+    const claudeMcpConfigPath = join(workingDir, ".mcp.json");
+
+    if (!existsSync(claudeMcpConfigPath)) {
+      const claudeMcpConfig = {
+        mcpServers: {
+          memorykit: {
+            command: "memorykit",
+            args: [],
+            env: {},
+          },
+        },
+      };
+
+      writeFileSync(
+        claudeMcpConfigPath,
+        JSON.stringify(claudeMcpConfig, null, 2),
+        "utf-8",
+      );
+
+      console.log(`\n✅ Created Claude Code config: ${claudeMcpConfigPath}`);
+      console.log(`💡 Claude Code will auto-detect this server in the project`);
+    } else {
+      console.log(`\n⚠️  .mcp.json already exists, skipping`);
     }
   }
 }
