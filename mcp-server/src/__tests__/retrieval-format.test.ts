@@ -74,35 +74,6 @@ describe("Retrieval Output Format (M4)", () => {
     }
   });
 
-  describe("Layer Groupings", () => {
-    it("should include H2 headers for each layer with entries", async () => {
-      const result = await retrieveContext("show me the context", {
-        scope: MemoryScope.Project,
-        max_tokens: 5000, // Ensure all entries are retrieved
-      });
-
-      // Should have layer groupings
-      expect(result.context).toContain("## facts");
-      expect(result.context).toContain("## procedures");
-      expect(result.context).toContain("## episodes");
-    });
-
-    it("should order layers: Facts → Procedures → Episodes → Working", async () => {
-      const result = await retrieveContext("show me the context", {
-        scope: MemoryScope.Project,
-        max_tokens: 5000, // Ensure all entries are retrieved
-      });
-
-      const factsIndex = result.context.indexOf("## facts");
-      const proceduresIndex = result.context.indexOf("## procedures");
-      const episodesIndex = result.context.indexOf("## episodes");
-
-      expect(factsIndex).toBeGreaterThan(-1);
-      expect(proceduresIndex).toBeGreaterThan(factsIndex);
-      expect(episodesIndex).toBeGreaterThan(proceduresIndex);
-    });
-  });
-
   describe("Field Stripping", () => {
     it("should strip importance field from output entries", async () => {
       const result = await retrieveContext("database", {

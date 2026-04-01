@@ -25,7 +25,8 @@ import {
   checkDuplicate,
   checkContradiction,
 } from "./quality-gate.js";
-import { existsSync, readdirSync } from "fs";
+import { existsSync } from "fs";
+import { readdir } from "fs/promises";
 import { embedText } from "./embedding.js"; // Tier 1
 import { indexEntities } from "./entity-graph.js"; // Tier 2
 
@@ -392,7 +393,8 @@ async function getExistingEntries(scope: MemoryScope): Promise<any[]> {
       return [];
     }
 
-    const files = readdirSync(layerPath).filter((f) => f.endsWith(".md"));
+    const allFiles = await readdir(layerPath);
+    const files = allFiles.filter((f) => f.endsWith(".md"));
     const entries: any[] = [];
 
     // Process files in parallel
