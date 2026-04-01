@@ -18,6 +18,7 @@ public class MemoryOrchestrator : IMemoryOrchestrator
     private readonly IProceduralMemoryService _proceduralMemory;
     private readonly IPrefrontalController _prefrontal;
     private readonly IAmygdalaImportanceEngine _amygdala;
+    private readonly ISemanticKernelService _semanticKernel;
     private readonly ILogger<MemoryOrchestrator> _logger;
 
     public MemoryOrchestrator(
@@ -27,6 +28,7 @@ public class MemoryOrchestrator : IMemoryOrchestrator
         IProceduralMemoryService proceduralMemory,
         IPrefrontalController prefrontal,
         IAmygdalaImportanceEngine amygdala,
+        ISemanticKernelService semanticKernel,
         ILogger<MemoryOrchestrator> logger)
     {
         _workingMemory = workingMemory;
@@ -35,6 +37,7 @@ public class MemoryOrchestrator : IMemoryOrchestrator
         _proceduralMemory = proceduralMemory;
         _prefrontal = prefrontal;
         _amygdala = amygdala;
+        _semanticKernel = semanticKernel;
         _logger = logger;
     }
 
@@ -185,11 +188,21 @@ public class MemoryOrchestrator : IMemoryOrchestrator
             "Message importance score: {Score}",
             importance.FinalScore);
 
-        // Step 2: Store in all layers (parallel where safe)
+        // Step 2: Extract semantic facts with fallback
+        var semanticFacts = await ExtractSemanticFactsAsync(
+            userId,
+            conversationId,
+            message,
+            cancellationToken);
+
+        // Step 3: Store in all layers (parallel where safe)
         var storageTasks = new[]
         {
             // Layer 1: Archive everything
             _episodicMemory.ArchiveAsync(message, cancellationToken),
+
+            // Layer 2: Store semantic facts
+            _scratchpad.StoreFactsAsync(userId, conversationId, semanticFacts, cancellationToken),
 
             // Layer 3: Update working memory
             _workingMemory.AddAsync(userId, conversationId, message, cancellationToken)
@@ -246,6 +259,28 @@ public class MemoryOrchestrator : IMemoryOrchestrator
         return _prefrontal.BuildQueryPlanAsync(query, state, cancellationToken);
     }
 
+    public async Task StoreSemanticFactsAsync(
+        string userId,
+        string conversationId,
+        ExtractedFact[] facts,
+        CancellationToken cancellationToken = default)
+    {
+        if (facts.Length == 0)
+            return;
+
+        _logger.LogInformation(
+            "Storing {FactCount} semantic facts for user {UserId}, conversation {ConversationId}",
+            facts.Length,
+            userId,
+            conversationId);
+
+        await _scratchpad.StoreFactsAsync(userId, conversationId, facts, cancellationToken);
+
+        _logger.LogDebug(
+            "Successfully stored {FactCount} semantic facts",
+            facts.Length);
+    }
+
     /// <summary>
     /// Deletes all user data across all memory layers (GDPR compliance).
     /// </summary>
@@ -271,6 +306,77 @@ public class MemoryOrchestrator : IMemoryOrchestrator
         _logger.LogInformation(
             "Successfully deleted all data for user {UserId}",
             userId);
+    }
+
+    /// <summary>
+    /// Extracts semantic facts from a message with timeout and fallback.
+    /// Always returns at least one fact to guarantee L2 population.
+    /// </summary>
+    private async Task<ExtractedFact[]> ExtractSemanticFactsAsync(
+        string userId,
+        string conversationId,
+        Message message,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Create timeout token (300ms)
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeoutCts.CancelAfter(TimeSpan.FromMilliseconds(300));
+
+            // Attempt entity extraction
+            var entities = await _semanticKernel.ExtractEntitiesAsync(
+                message.Content,
+                timeoutCts.Token);
+
+            if (entities != null && entities.Length > 0)
+            {
+                // Convert entities to facts
+                var facts = entities.Select(e => ExtractedFact.Create(
+                    userId,
+                    conversationId,
+                    e.Key,
+                    e.Value,
+                    e.Type,
+                    e.Importance
+                )).ToArray();
+
+                _logger.LogDebug(
+                    "Extracted {Count} semantic facts from message {MessageId}",
+                    facts.Length,
+                    message.Id);
+
+                return facts;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogDebug(
+                "Entity extraction timeout for message {MessageId}, using fallback",
+                message.Id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Entity extraction failed for message {MessageId}, using fallback",
+                message.Id);
+        }
+
+        // Fallback: Create minimal semantic fact from message content
+        var fallbackFact = ExtractedFact.Create(
+            userId,
+            conversationId,
+            "statement",
+            message.Content.Trim(),
+            EntityType.Other,
+            0.5);
+
+        _logger.LogDebug(
+            "Using fallback semantic fact for message {MessageId}",
+            message.Id);
+
+        return new[] { fallbackFact };
     }
 
     /// <summary>

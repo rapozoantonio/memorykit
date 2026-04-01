@@ -58,8 +58,11 @@ public class ComparativeBenchmarks
         var amygdala = new AmygdalaImportanceEngine(
             loggerFactory.CreateLogger<AmygdalaImportanceEngine>());
 
+        var semanticKernel = new MockSemanticKernelService(
+            loggerFactory.CreateLogger<MockSemanticKernelService>());
+
         _orchestrator = new MemoryOrchestrator(
-            workingMemory, scratchpad, episodic, procedural, prefrontal, amygdala,
+            workingMemory, scratchpad, episodic, procedural, prefrontal, amygdala, semanticKernel,
             loggerFactory.CreateLogger<MemoryOrchestrator>());
 
         // Seed both systems with same conversation data

@@ -1,5 +1,6 @@
-// Quick test script for Docker-based MCP server
-import { ProcessManager } from "./dist/process-manager.js";
+// @deprecated — This test file was for the legacy Docker/.NET API architecture.
+// The current MCP server uses file-based storage with no Docker dependency.
+// Run 'npm test' for the current test suite (vitest).
 
 console.log("Testing Docker-based MCP server...\n");
 
