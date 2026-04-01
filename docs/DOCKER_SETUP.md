@@ -1,4 +1,3 @@
-
 # Docker + PostgreSQL Setup for MemoryKit
 
 ## Quick Start
@@ -20,7 +19,7 @@ docker logs memorykit-api -f
 
 ```bash
 # Test persistence and API functionality
-.\docker-test.ps1
+.\scripts\docker-test.ps1
 ```
 
 ### 3. Connect Claude Desktop via MCP

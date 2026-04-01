@@ -177,7 +177,7 @@ API → Application → Domain ← Infrastructure
 
 **Key Rule:** Domain has ZERO external dependencies.
 
-📖 See [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md) for details.
+📖 See [docs/DEVELOPMENT_GUIDE.md](docs/DEVELOPMENT_GUIDE.md) for details.
 
 ## Testing
 

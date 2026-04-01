@@ -13,7 +13,7 @@ All notable changes to MemoryKit.
 **Documentation:**
 
 - Scientific overview explaining the LLM memory problem ([SCIENTIFIC_OVERVIEW.md](docs/SCIENTIFIC_OVERVIEW.md))
-- Development guide with best practices ([DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md))
+- Development guide with best practices ([DEVELOPMENT_GUIDE.md](docs/DEVELOPMENT_GUIDE.md))
 - XML documentation for all public Domain interfaces
 - GDPR compliance documentation
 

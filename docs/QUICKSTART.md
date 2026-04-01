@@ -92,7 +92,7 @@ In `Domain/Entities/`:
 public class MyEntity : Entity<string>
 {
     public string Name { get; private set; }
-    
+
     public static MyEntity Create(string name)
     {
         return new MyEntity
@@ -190,10 +190,10 @@ public async Task RetrieveContext_WithValidQuery_ReturnsMemoryContext()
 {
     // Arrange
     var query = "test query";
-    
+
     // Act
     var result = await _service.RetrieveAsync(query);
-    
+
     // Assert
     Assert.NotNull(result);
 }
@@ -216,17 +216,20 @@ public async Task RetrieveContext_WithValidQuery_ReturnsMemoryContext()
 ### Common Issues
 
 **Problem**: Port 5001 already in use
+
 ```bash
 dotnet run --urls "https://localhost:5002"
 ```
 
 **Problem**: NuGet package restore fails
+
 ```bash
 dotnet nuget add source https://api.nuget.org/v3/index.json --name nuget.org
 dotnet restore
 ```
 
 **Problem**: Build fails with SDK version
+
 ```bash
 dotnet --version
 # Update to .NET 9.0 if needed
@@ -237,6 +240,7 @@ dotnet --version
 MemoryKit supports **two storage providers**:
 
 ### In-Memory (Default)
+
 No setup required.
 
 ```json
@@ -248,9 +252,11 @@ No setup required.
 ```
 
 ### Azure (Production)
+
 Enterprise-grade persistent storage with automatic failover.
 
 **Required Resources:**
+
 - Azure Cache for Redis (Working Memory)
 - Azure Storage Account (Semantic/Procedural/Episodic)
 - Azure AI Search (Vector search)
@@ -271,36 +277,14 @@ Enterprise-grade persistent storage with automatic failover.
 }
 ```
 
-See `docs/DEPLOYMENT.md` for detailed Azure setup.
-
-## Configuration
-
-Configuration hierarchy (highest priority first):
-
-1. Environment variables
-2. `appsettings.{Environment}.json`
-3. `appsettings.json`
-4. Default values in code
-
-Example `appsettings.json`:
-
-```json
-{
-  "Logging": {
-    "LogLevel": { "Default": "Information" }
-  },
-  "Azure": {
-    "Redis": { "ConnectionString": "..." }
-  }
-}
-```
+See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed Azure setup.
 
 ## Documentation
 
-- **ARCHITECTURE.md**: Deep dive into system design
-- **API.md**: REST API reference
-- **DEPLOYMENT.md**: Azure deployment guide
-- **COGNITIVE_MODEL.md**: Neuroscience inspiration
+- [ARCHITECTURE.md](ARCHITECTURE.md): Deep dive into system design
+- [API.md](API.md): REST API reference
+- [DEPLOYMENT.md](DEPLOYMENT.md): Azure deployment guide
+- [COGNITIVE_MODEL.md](COGNITIVE_MODEL.md): Neuroscience inspiration
 
 ## Contributing
 
@@ -310,7 +294,7 @@ Example `appsettings.json`:
 4. Push: `git push origin feature/my-feature`
 5. Create Pull Request
 
-See `CONTRIBUTING.md` for detailed guidelines.
+See [CONTRIBUTING.md](../CONTRIBUTING.md) for detailed guidelines.
 
 ## Resources
 
@@ -321,15 +305,15 @@ See `CONTRIBUTING.md` for detailed guidelines.
 
 ## Support
 
-- 📖 Check documentation in `/docs`
+- 📖 Check documentation in [/docs](.)
 - 🐛 Report bugs on GitHub Issues
 - 💬 Ask questions in Discussions
 - 📧 Contact maintainers
 
 ## License
 
-MIT License - see `LICENSE` file
+MIT License - see [LICENSE](../LICENSE) file
 
 ---
 
-**Ready to contribute?** See `CONTRIBUTING.md` to get started! 🚀
+**Ready to contribute?** See [CONTRIBUTING.md](../CONTRIBUTING.md) to get started! 🚀

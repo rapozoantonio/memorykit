@@ -6,19 +6,16 @@ All changes have been successfully implemented:
 
 ### Changes Applied
 
-1. **✅ Configuration Fixed** - [src/MemoryKit.API/appsettings.Production.json](src/MemoryKit.API/appsettings.Production.json)
-
+1. **✅ Configuration Fixed** - [src/MemoryKit.API/appsettings.Production.json](../src/MemoryKit.API/appsettings.Production.json)
    - Changed `StorageProvider` from `"Azure"` to `"PostgreSQL"`
    - Docker environment variables continue to override this correctly
 
-2. **✅ Documentation Updated** - [docs/END_USER_INSTALLATION_GUIDE.md](docs/END_USER_INSTALLATION_GUIDE.md)
-
+2. **✅ Documentation Updated** - [END_USER_INSTALLATION_GUIDE.md](END_USER_INSTALLATION_GUIDE.md)
    - Removed outdated "v0.1 uses InMemory only" claims
    - Updated to reflect PostgreSQL persistence is available now
    - Clarified Docker vs standalone deployment persistence differences
 
 3. **✅ Security Improved** - Test files moved
-
    - `mcp-server/test-api-client.js` → `SECRETS/test-api-client.js`
    - `mcp-server/test-mcp-tools.js` → `SECRETS/test-mcp-tools.js`
    - API keys no longer exposed in production documentation

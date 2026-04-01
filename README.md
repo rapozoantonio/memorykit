@@ -9,9 +9,9 @@
 
 **Enterprise-grade, neuroscience-inspired memory infrastructure for LLM applications**
 
-*Because your AI shouldn't have the memory of a goldfish* 🐠
+_Because your AI shouldn't have the memory of a goldfish_ 🐠
 
-[Quick Start](QUICKSTART.md) · [Documentation](docs/) · [Architecture](docs/ARCHITECTURE.md) · [API Docs](docs/API.md)
+[Quick Start](docs/QUICKSTART.md) · [Documentation](docs/) · [Architecture](docs/ARCHITECTURE.md) · [API Docs](docs/API.md)
 
 </div>
 
@@ -35,11 +35,11 @@ AI:              "I don't have that information" ❌
 
 For a typical enterprise chatbot with 100-turn conversations:
 
-| Approach | Tokens/Query | Cost/Query | Monthly (10K users) |
-|----------|--------------|------------|---------------------|
-| **Naive (full context)** | 50,000 | $1.50 | **$750,000** 💸 |
-| **MemoryKit** | 800 | $0.024 | **$12,000** ✨ |
-| **You Save** | **98.4%** | **98.4%** | **$738,000/month** 🎯 |
+| Approach                 | Tokens/Query | Cost/Query | Monthly (10K users)   |
+| ------------------------ | ------------ | ---------- | --------------------- |
+| **Naive (full context)** | 50,000       | $1.50      | **$750,000** 💸       |
+| **MemoryKit**            | 800          | $0.024     | **$12,000** ✨        |
+| **You Save**             | **98.4%**    | **98.4%**  | **$738,000/month** 🎯 |
 
 **MemoryKit solves this.** Inspired by how the human brain actually works.
 
@@ -51,13 +51,13 @@ Humans don't recall every conversation verbatim. Instead, we use a **hierarchica
 
 ### The Human Brain Architecture
 
-| Brain Region | Function | Duration | What It Stores |
-|--------------|----------|----------|----------------|
-| **Prefrontal Cortex** | Working Memory | Seconds-Minutes | Active conversation (7±2 items) |
-| **Hippocampus** | Encoding & Indexing | Hours-Days | Recent experiences, decides what to keep |
-| **Neocortex** | Semantic Memory | Months-Years | Facts, concepts, knowledge |
-| **Amygdala** | Emotional Tagging | - | Importance scoring ("remember THIS!") |
-| **Basal Ganglia** | Procedural Memory | Years | Skills, habits, routines |
+| Brain Region          | Function            | Duration        | What It Stores                           |
+| --------------------- | ------------------- | --------------- | ---------------------------------------- |
+| **Prefrontal Cortex** | Working Memory      | Seconds-Minutes | Active conversation (7±2 items)          |
+| **Hippocampus**       | Encoding & Indexing | Hours-Days      | Recent experiences, decides what to keep |
+| **Neocortex**         | Semantic Memory     | Months-Years    | Facts, concepts, knowledge               |
+| **Amygdala**          | Emotional Tagging   | -               | Importance scoring ("remember THIS!")    |
+| **Basal Ganglia**     | Procedural Memory   | Years           | Skills, habits, routines                 |
 
 ### MemoryKit's Brain-Inspired Architecture
 
@@ -114,16 +114,16 @@ The **Prefrontal Controller** decides which layers to query based on intent:
 
 ### vs. Existing Solutions
 
-| Feature | MemoryKit | Mem0 | Letta | LangChain |
-|---------|-----------|------|-------|-----------|
-| **Language** | **.NET 9** | Python | Python | Python |
-| **Architecture** | **Brain-inspired** | Vector DB | Hierarchical | Flat |
-| **Procedural Memory** | **✅ Yes** | ❌ No | ⚠️ Basic | ❌ No |
-| **Cost Reduction** | **98-99%** | 85-90% | 80-85% | 60-70% |
-| **Query Planning** | **✅ Intelligent** | ❌ Static | ⚠️ Basic | ❌ Static |
-| **Emotional Weighting** | **✅ Amygdala** | ❌ No | ❌ No | ❌ No |
-| **Enterprise Ready** | **✅ Day 1** | ⚠️ Partial | ❌ No | ⚠️ Partial |
-| **Azure Native** | **✅ Yes** | ❌ Generic | ❌ Generic | ❌ Generic |
+| Feature                 | MemoryKit          | Mem0       | Letta        | LangChain  |
+| ----------------------- | ------------------ | ---------- | ------------ | ---------- |
+| **Language**            | **.NET 9**         | Python     | Python       | Python     |
+| **Architecture**        | **Brain-inspired** | Vector DB  | Hierarchical | Flat       |
+| **Procedural Memory**   | **✅ Yes**         | ❌ No      | ⚠️ Basic     | ❌ No      |
+| **Cost Reduction**      | **98-99%**         | 85-90%     | 80-85%       | 60-70%     |
+| **Query Planning**      | **✅ Intelligent** | ❌ Static  | ⚠️ Basic     | ❌ Static  |
+| **Emotional Weighting** | **✅ Amygdala**    | ❌ No      | ❌ No        | ❌ No      |
+| **Enterprise Ready**    | **✅ Day 1**       | ⚠️ Partial | ❌ No        | ⚠️ Partial |
+| **Azure Native**        | **✅ Yes**         | ❌ Generic | ❌ Generic   | ❌ Generic |
 
 ### Unique Innovations
 
@@ -132,7 +132,7 @@ The **Prefrontal Controller** decides which layers to query based on intent:
 🎯 **Importance scoring** - Amygdala-inspired emotional tagging  
 🏗️ **Clean Architecture** - Enterprise-grade from day one  
 💰 **Highest cost savings** - 98-99% reduction vs. naive approaches  
-🔒 **Production-hardened** - Security, monitoring, rate limiting built-in  
+🔒 **Production-hardened** - Security, monitoring, rate limiting built-in
 
 ---
 
@@ -230,13 +230,13 @@ New Message → Working Memory (L3) → Importance Scoring (Amygdala)
 
 ### Latency Targets (All Met ✅)
 
-| Operation | Target | Actual (p95) |
-|-----------|--------|--------------|
-| Working Memory Read | < 5ms | 3ms ✅ |
-| Semantic Search | < 30ms | 25ms ✅ |
-| Episodic Search | < 120ms | 95ms ✅ |
-| Full Context Assembly | < 150ms | 135ms ✅ |
-| End-to-End with LLM | < 2s | 1.8s ✅ |
+| Operation             | Target  | Actual (p95) |
+| --------------------- | ------- | ------------ |
+| Working Memory Read   | < 5ms   | 3ms ✅       |
+| Semantic Search       | < 30ms  | 25ms ✅      |
+| Episodic Search       | < 120ms | 95ms ✅      |
+| Full Context Assembly | < 150ms | 135ms ✅     |
+| End-to-End with LLM   | < 2s    | 1.8s ✅      |
 
 ### Production Scale
 
@@ -250,40 +250,45 @@ New Message → Working Memory (L3) → Importance Scoring (Amygdala)
 ## 🎨 Core Features
 
 ### Memory Operations
+
 ✅ Multi-layer storage (Working, Semantic, Episodic, Procedural)  
 ✅ Intelligent query planning (Prefrontal Controller)  
 ✅ Importance scoring (Amygdala Engine)  
 ✅ Automatic fact extraction  
 ✅ Pattern learning and matching  
-✅ Memory consolidation (background jobs)  
+✅ Memory consolidation (background jobs)
 
 ### Production-Ready
+
 ✅ API key authentication  
 ✅ Rate limiting (fixed, sliding, concurrent)  
 ✅ Health checks (live, ready, deep)  
 ✅ Application Insights monitoring  
 ✅ Docker + Docker Compose  
 ✅ Azure Bicep IaC templates  
-✅ CI/CD with GitHub Actions  
+✅ CI/CD with GitHub Actions
 
 ### Enterprise Features
+
 ✅ GDPR-compliant deletion  
 ✅ Multi-tenancy isolation  
 ✅ Comprehensive audit logging  
 ✅ Performance benchmarks (BenchmarkDotNet)  
-✅ Security hardening (OWASP compliance)  
+✅ Security hardening (OWASP compliance)
 
 ---
 
 ## 📚 Documentation
 
 ### Getting Started
-- **[Quick Start](QUICKSTART.md)** - 5-minute setup guide
-- **[Project Status](PROJECT_STATUS.md)** - Current state & roadmap
+
+- **[Quick Start](docs/QUICKSTART.md)** - 5-minute setup guide
+- **[Project Status](SECRETS/PROJECT_STATUS.md)** - Current state & roadmap
 - **[Contributing](CONTRIBUTING.md)** - How to contribute
 - **[Changelog](CHANGELOG.md)** - Version history
 
 ### Technical Deep-Dives
+
 - **[Architecture](docs/ARCHITECTURE.md)** - System design & patterns
 - **[Cognitive Model](docs/COGNITIVE_MODEL.md)** - Neuroscience mappings
 - **[Scientific Overview](docs/SCIENTIFIC_OVERVIEW.md)** - Research background
@@ -296,24 +301,28 @@ New Message → Working Memory (L3) → Importance Scoring (Amygdala)
 ## 🔧 Technology Stack
 
 **Backend**
+
 - .NET 9.0 (C# 13)
 - ASP.NET Core Web API
 - MediatR (CQRS)
 - FluentValidation
 
 **Azure Services**
+
 - Redis Cache (Working Memory)
 - Table Storage (Semantic/Procedural)
 - Blob Storage + AI Search (Episodic)
 - Azure OpenAI (Embeddings + LLM)
 
 **Architecture**
+
 - Clean Architecture
 - Domain-Driven Design
 - SOLID Principles
 - Dependency Injection
 
 **Testing & Quality**
+
 - xUnit (Unit/Integration tests)
 - BenchmarkDotNet (Performance)
 - Moq (Mocking)
@@ -349,10 +358,11 @@ git push origin feature/amazing-feature
 ```
 
 ### Resources for Contributors
+
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** - Guidelines & code of conduct
-- **[DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)** - Development workflow
+- **[DEVELOPMENT_GUIDE.md](docs/DEVELOPMENT_GUIDE.md)** - Development workflow
 - **[Architecture Docs](docs/ARCHITECTURE.md)** - System design
-- **[PROJECT_STATUS.md](PROJECT_STATUS.md)** - What needs work
+- **[PROJECT_STATUS.md](SECRETS/PROJECT_STATUS.md)** - What needs work
 
 ---
 
@@ -361,6 +371,7 @@ git push origin feature/amazing-feature
 **Version:** 1.0.0
 
 ### What's Complete ✅
+
 - ✅ Four-layer memory architecture
 - ✅ Neuroscience-inspired cognitive components
 - ✅ Clean Architecture (zero circular dependencies)
@@ -371,6 +382,7 @@ git push origin feature/amazing-feature
 - ✅ Comprehensive documentation
 
 ### What's Next 🚧
+
 - ⚠️ Azure service implementations (Redis, Tables, Blob, AI Search)
 - ⚠️ Real Azure OpenAI integration
 - ⚠️ Comprehensive test coverage
@@ -378,7 +390,7 @@ git push origin feature/amazing-feature
 - 📋 Background consolidation jobs
 - 📋 Advanced analytics dashboard
 
-See **[PROJECT_STATUS.md](PROJECT_STATUS.md)** for full details.
+See **[PROJECT_STATUS.md](SECRETS/PROJECT_STATUS.md)** for full details.
 
 ---
 
@@ -401,6 +413,7 @@ See **[docs/SCIENTIFIC_OVERVIEW.md](docs/SCIENTIFIC_OVERVIEW.md)** for the full 
 Traditional LLM memory solutions treat memory as a flat vector database. MemoryKit recognizes that **human memory is hierarchical, importance-weighted, and query-dependent**.
 
 By mimicking how the brain actually works, we achieve:
+
 - **Better relevance** - Only retrieve what matters
 - **Lower cost** - Don't load irrelevant history
 - **Faster response** - Parallel layer retrieval
@@ -459,12 +472,12 @@ If MemoryKit helps your project, please consider:
 
 ### 🎯 Ready to give your AI a real memory?
 
-**[Get Started](QUICKSTART.md)** · **[Read the Docs](docs/)** · **[Join the Discussion](https://github.com/rapozoantonio/memorykit/discussions)**
+**[Get Started](docs/QUICKSTART.md)** · **[Read the Docs](docs/)** · **[Join the Discussion](https://github.com/rapozoantonio/memorykit/discussions)**
 
 ---
 
 Made with 🧠 and ❤️ by [Antonio Rapozo](https://github.com/rapozoantonio)
 
-*Inspired by 50+ years of cognitive neuroscience research*
+_Inspired by 50+ years of cognitive neuroscience research_
 
 </div>

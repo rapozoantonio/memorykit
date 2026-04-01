@@ -579,7 +579,7 @@ public class MemoryRetrievalBenchmarks
 
 ## Deployment
 
-See [DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed deployment instructions.
+See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed deployment instructions.
 
 ### Quick Deploy to Azure
 
@@ -619,13 +619,11 @@ az webapp deploy --resource-group memorykit-rg --name memorykit-api --src-path .
 ### PR Review Process
 
 1. Automated checks must pass:
-
    - ✅ All tests pass
    - ✅ No build warnings
    - ✅ Code coverage > 80%
 
 2. Code review by maintainer:
-
    - Architecture adherence
    - Code quality and readability
    - Performance implications
@@ -650,7 +648,7 @@ az webapp deploy --resource-group memorykit-rg --name memorykit-api --src-path .
 ## Resources
 
 - **GitHub Repository**: https://github.com/rapozoantonio/memorykit
-- **Documentation**: [docs/README.md](docs/README.md)
+- **Documentation**: [README.md](README.md)
 - **Issue Tracker**: https://github.com/rapozoantonio/memorykit/issues
 - **Discussions**: https://github.com/rapozoantonio/memorykit/discussions
 
@@ -658,7 +656,7 @@ az webapp deploy --resource-group memorykit-rg --name memorykit-api --src-path .
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+MIT License - see [LICENSE](../LICENSE) for details.
 
 ---
 
