@@ -1,8 +1,12 @@
 using MediatR;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using MemoryKit.Application.Configuration;
 using MemoryKit.Application.DTOs;
+using MemoryKit.Application.Services;
 using MemoryKit.Domain.Entities;
 using MemoryKit.Domain.Interfaces;
+using MemoryKit.Domain.ValueObjects;
 
 namespace MemoryKit.Application.UseCases.AddMessage;
 
@@ -22,15 +26,21 @@ public class AddMessageHandler : IRequestHandler<AddMessageCommand, MessageRespo
     private readonly IMemoryOrchestrator _orchestrator;
     private readonly ISemanticKernelService _llm;
     private readonly ILogger<AddMessageHandler> _logger;
+    private readonly HeuristicExtractionConfig _heuristicConfig;
 
     public AddMessageHandler(
         IMemoryOrchestrator orchestrator,
         ISemanticKernelService llm,
-        ILogger<AddMessageHandler> logger)
+        ILogger<AddMessageHandler> logger,
+        IConfiguration configuration)
     {
         _orchestrator = orchestrator;
         _llm = llm;
         _logger = logger;
+
+        // Read heuristic extraction configuration
+        _heuristicConfig = new HeuristicExtractionConfig();
+        configuration.GetSection("MemoryKit:HeuristicExtraction").Bind(_heuristicConfig);
     }
 
     public async Task<MessageResponse> Handle(
@@ -55,13 +65,79 @@ public class AddMessageHandler : IRequestHandler<AddMessageCommand, MessageRespo
             message.MarkAsQuestion();
         }
 
-        // Extract entities in background
+        // Extract entities and store as semantic facts in background
         _ = Task.Run(async () =>
         {
             try
             {
-                var entities = await _llm.ExtractEntitiesAsync(message.Content, cancellationToken);
+                ExtractedEntity[] entities;
+                string extractionMethod;
+
+                // PHASE 1: Determine extraction strategy based on configuration
+                if (_heuristicConfig.UseHeuristicFirst || _heuristicConfig.HeuristicOnly)
+                {
+                    // Try heuristic extraction first (includes narrative fallback if configured)
+                    var heuristicEntities = HeuristicFactExtractor.Extract(
+                        message.Content,
+                        _heuristicConfig.UseNarrativeFallback,
+                        _heuristicConfig.NarrativeImportanceScore,
+                        _heuristicConfig.MaxNarrativeFragmentsPerMessage);
+
+                    if (_heuristicConfig.HeuristicOnly)
+                    {
+                        // Use ONLY heuristics, never call LLM
+                        entities = heuristicEntities.ToArray();
+                        extractionMethod = "heuristic-only";
+                    }
+                    else if (heuristicEntities.Count >= _heuristicConfig.MinHeuristicFactsForAI)
+                    {
+                        // Heuristics found enough facts, skip LLM for cost optimization
+                        entities = heuristicEntities.ToArray();
+                        extractionMethod = "heuristic-sufficient";
+                    }
+                    else
+                    {
+                        // Heuristics insufficient, use LLM and merge results
+                        var llmEntities = await _llm.ExtractEntitiesAsync(message.Content, cancellationToken);
+
+                        // Merge: LLM entities + heuristic entities, deduplicate by Key+Value
+                        var merged = llmEntities.ToList();
+                        foreach (var he in heuristicEntities)
+                        {
+                            // Add heuristic entity if not already present (case-insensitive)
+                            if (!merged.Any(e =>
+                                e.Key.Equals(he.Key, StringComparison.OrdinalIgnoreCase) &&
+                                e.Value.Equals(he.Value, StringComparison.OrdinalIgnoreCase)))
+                            {
+                                merged.Add(he);
+                            }
+                        }
+
+                        entities = merged.ToArray();
+                        extractionMethod = "heuristic-plus-llm";
+                    }
+                }
+                else
+                {
+                    // Traditional: LLM-only extraction (original behavior)
+                    entities = await _llm.ExtractEntitiesAsync(message.Content, cancellationToken);
+                    extractionMethod = "llm-only";
+                }
+
+                // Log extraction method if enabled
+                if (_heuristicConfig.LogExtractionMethod)
+                {
+                    _logger.LogInformation(
+                        "Extracted {Count} entities using method: {Method} (message {MessageId})",
+                        entities.Length,
+                        extractionMethod,
+                        message.Id);
+                }
+
                 message.SetExtractedEntities(entities);
+
+                // Note: Semantic facts are now stored directly in MemoryOrchestrator.StoreAsync
+                // This background task only logs extraction results for monitoring
             }
             catch (Exception ex)
             {

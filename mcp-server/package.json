@@ -1,40 +1,72 @@
 {
-  "name": "@memorykit/mcp-server",
-  "version": "0.1.0",
-  "description": "MCP server providing persistent memory for AI agents",
+  "name": "memorykit",
+  "version": "0.2.0",
+  "description": "Cognitive memory for AI coding assistants — persistent memory across conversations for Claude, Copilot, and Cursor",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "bin": {
-    "memorykit-mcp": "./dist/index.js"
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
   },
+  "bin": {
+    "memorykit": "./dist/index.js"
+  },
+  "files": [
+    "dist/",
+    "templates/",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
-    "prepare": "npm run build"
+    "test": "vitest",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm test && npm run build"
   },
   "keywords": [
     "mcp",
     "memory",
     "ai",
-    "agent",
+    "cursor",
+    "copilot",
     "claude",
-    "chatgpt"
+    "llm",
+    "context",
+    "cognitive",
+    "model-context-protocol"
   ],
   "author": "Antonio Rapozo",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/antonio-rapozo/memorykit.git",
+    "directory": "mcp-server"
+  },
+  "bugs": {
+    "url": "https://github.com/antonio-rapozo/memorykit/issues"
+  },
+  "homepage": "https://github.com/antonio-rapozo/memorykit#readme",
   "engines": {
     "node": ">=18.0.0"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "axios": "^1.6.0",
+    "@xenova/transformers": "^2.17.0",
+    "commander": "^11.0.0",
+    "glob": "^10.3.0",
+    "yaml": "^2.3.0",
     "zod": "^3.22.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "tsx": "^4.7.0",
-    "typescript": "^5.3.0"
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0"
   }
 }

@@ -180,8 +180,16 @@ public class EnhancedInMemoryProceduralMemoryService : IProceduralMemoryService
 
             if (existingPattern != null)
             {
-                _logger.LogDebug("Merging with existing pattern: {PatternName}", existingPattern.Name);
+                _logger.LogDebug(
+                    "Found existing similar pattern '{ExistingName}' for new pattern '{NewName}'. Merging...",
+                    existingPattern.Name,
+                    pattern.Name);
                 MergePatterns(existingPattern, pattern);
+                
+                _logger.LogInformation(
+                    "Updated existing procedural pattern: {PatternName} (UsageCount: {UsageCount})",
+                    existingPattern.Name,
+                    existingPattern.UsageCount);
             }
             else
             {
@@ -490,11 +498,16 @@ Return ONLY valid JSON array. If no patterns found, return empty array [].";
     /// </summary>
     private bool IsSimilarPattern(ProceduralPattern p1, ProceduralPattern p2)
     {
+        // Normalize names for comparison (remove special chars, trim whitespace)
+        var name1 = new string(p1.Name.ToLowerInvariant().Where(c => char.IsLetterOrDigit(c) || char.IsWhiteSpace(c)).ToArray()).Trim();
+        var name2 = new string(p2.Name.ToLowerInvariant().Where(c => char.IsLetterOrDigit(c) || char.IsWhiteSpace(c)).ToArray()).Trim();
+        
+        // Check exact name match after normalization
+        if (name1 == name2 && !string.IsNullOrWhiteSpace(name1))
+            return true;
+        
         // Check name similarity
-        var nameSimilarity = CalculateStringSimilarity(
-            p1.Name.ToLowerInvariant(),
-            p2.Name.ToLowerInvariant());
-
+        var nameSimilarity = CalculateStringSimilarity(name1, name2);
         if (nameSimilarity > 0.8)
             return true;
 
@@ -525,12 +538,25 @@ Return ONLY valid JSON array. If no patterns found, return empty array [].";
         {
             target.SetTriggers(target.Triggers.Concat(newTriggers).ToArray());
         }
-
-        // Record usage from merged pattern
-        for (int i = 0; i < source.UsageCount; i++)
+        
+        // Update instruction template if source has a different/better one
+        // Prefer longer, more detailed instructions
+        if (!string.IsNullOrWhiteSpace(source.InstructionTemplate) &&
+            source.InstructionTemplate != target.InstructionTemplate &&
+            source.InstructionTemplate.Length > target.InstructionTemplate?.Length)
         {
-            target.RecordUsage();
+            target.UpdateInstructionTemplate(source.InstructionTemplate);
+            _logger.LogDebug("Updated instruction template for pattern {PatternName}", target.Name);
         }
+
+        // Record usage to track pattern evolution
+        target.RecordUsage();
+        
+        _logger.LogDebug(
+            "Merged pattern {SourceName} into {TargetName}. Target now has {UsageCount} uses",
+            source.Name,
+            target.Name,
+            target.UsageCount);
     }
 
     /// <summary>

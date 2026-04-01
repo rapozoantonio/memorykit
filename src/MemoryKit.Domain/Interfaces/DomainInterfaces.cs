@@ -56,6 +56,15 @@ public interface IMemoryOrchestrator
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Stores semantic facts extracted from messages into L2 semantic memory.
+    /// </summary>
+    Task StoreSemanticFactsAsync(
+        string userId,
+        string conversationId,
+        ExtractedFact[] facts,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Builds an optimized query plan based on the query content.
     /// </summary>
     Task<QueryPlan> BuildQueryPlanAsync(

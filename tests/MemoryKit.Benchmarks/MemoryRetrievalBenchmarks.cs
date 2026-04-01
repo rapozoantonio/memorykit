@@ -65,6 +65,7 @@ public class MemoryRetrievalBenchmarks
             procedural,
             prefrontal,
             amygdala,
+            semanticKernel,
             _logger);
 
         // Pre-populate with test data

@@ -23,9 +23,9 @@ MemoryKit is a **production-ready ** with enterprise-grade architecture and comp
 #### Memory Layers (In-Memory Implementation)
 
 - ✅ **Layer 3: Working Memory** - Recent conversation context (Redis-compatible)
-- ✅ **Layer 2: Semantic Memory (Scratchpad)** - Extracted facts with embeddings
+- ✅ **Layer 2: Semantic Memory (Scratchpad)** - Automatic fact extraction and storage from messages
 - ✅ **Layer 1: Episodic Memory** - Full conversation archive with vector search
-- ✅ **Layer P: Procedural Memory** - Learned patterns and workflows (enhanced)
+- ✅ **Layer P: Procedural Memory** - Pattern evolution with intelligent deduplication and merging
 
 #### Cognitive Components
 

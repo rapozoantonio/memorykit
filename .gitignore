@@ -78,3 +78,5 @@ docker-compose.override.yml
 
 # Confidential Documentation
 SECRETS/
+
+.github/agents
