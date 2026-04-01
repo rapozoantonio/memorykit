@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "memorykit": {
+      "command": "memorykit",
+      "args": [],
+      "env": {}
+    }
+  }
+}

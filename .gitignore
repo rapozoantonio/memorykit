@@ -80,3 +80,6 @@ docker-compose.override.yml
 SECRETS/
 
 .github/agents
+
+# Claude user-specific settings (contains local paths)
+.claude/
