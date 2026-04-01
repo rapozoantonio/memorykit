@@ -22,6 +22,7 @@ import { loadConfig } from "../storage/config-loader.js";
 import { join } from "path";
 import { existsSync } from "fs";
 import { glob } from "glob";
+import { embedText, cosineSimilarity } from "./embedding.js"; // Tier 1
 
 /**
  * ROI statistics for retrieval
@@ -87,11 +88,12 @@ export async function retrieveContext(
     config.global.priority,
   );
 
-  // Sort by relevance × effective score (importance × recency)
-  const scoredEntries = sortByRelevanceScore(allEntries, query);
+  // Sort by relevance × effective score (async for embeddings)
+  const scoredEntries = await sortByRelevanceScore(allEntries, query);
 
-  // Filter by relevance threshold to exclude noise (min 20% query overlap)
-  const MIN_RELEVANCE_SCORE = 0.2;
+  // Filter by relevance threshold to exclude noise
+  // Lower threshold (0.1) to allow semantic matches with lower scores
+  const MIN_RELEVANCE_SCORE = 0.1;
   const relevantEntries = scoredEntries
     .filter((s) => s.relevance >= MIN_RELEVANCE_SCORE)
     .map((s) => s.entry);
@@ -222,18 +224,84 @@ function calculateRelevance(
  * Sort entries by combined relevance × effective score
  * Pre-computes tokens to avoid O(n² log n) in sort comparator
  * Returns entries with relevance scores attached for filtering
+ *
+ * Tier 1 Enhancement: Uses semantic embeddings when available
  */
-function sortByRelevanceScore(
+async function sortByRelevanceScore(
   entries: MemoryEntry[],
   query: string,
-): Array<{ entry: MemoryEntry; relevance: number; score: number }> {
+): Promise<Array<{ entry: MemoryEntry; relevance: number; score: number }>> {
   const queryTokens = tokenize(query);
 
+  // Tier 1: Generate query embedding once (cached for all entries)
+  let queryEmbedding: number[] | null = null;
+  try {
+    queryEmbedding = await embedText(query);
+  } catch (error) {
+    // Embed failed, fall back to token matching only
+    console.warn("Failed to generate query embedding:", error);
+  }
+
+  // Pre-compute embeddings for entries that don't have them (async)
+  // This handles both old entries (no embedding) and new entries (embedding persisted)
+  const embeddingPromises = entries.map(async (entry) => {
+    if (!entry.embedding && queryEmbedding) {
+      try {
+        const entryText = `${entry.title} ${entry.what} ${entry.tags.join(" ")}`;
+        entry.embedding = await embedText(entryText);
+      } catch (error) {
+        // Failed to generate - leave undefined
+      }
+    }
+    return entry;
+  });
+
+  // Wait for all embeddings to be ready
+  const entriesWithEmbeddings = await Promise.all(embeddingPromises);
+
+  // Debug: Log embedding status in tests
+  if (process.env.NODE_ENV === "test") {
+    const withEmbeddings = entriesWithEmbeddings.filter(
+      (e) => e.embedding,
+    ).length;
+    console.log(`\nSemantic scoring for query: "${query}"
+  Query embedding: ${queryEmbedding ? "✓" : "✗"}
+  Entries with embeddings: ${withEmbeddings}/${entriesWithEmbeddings.length}`);
+  }
+
   // Pre-compute tokens and scores for all entries
-  const scored = entries.map((entry) => {
+  const scored = entriesWithEmbeddings.map((entry) => {
     const entryText = [entry.title, entry.what, ...entry.tags].join(" ");
     const entryTokens = tokenize(entryText);
-    const relevance = calculateRelevance(queryTokens, entryTokens);
+
+    // Token-based relevance (existing approach)
+    const tokenRelevance = calculateRelevance(queryTokens, entryTokens);
+
+    // Semantic relevance (Tier 1: using embeddings)
+    let semanticRelevance = 0;
+    if (queryEmbedding && entry.embedding) {
+      try {
+        const similarity = cosineSimilarity(queryEmbedding, entry.embedding);
+        // Cosine similarity ranges from -1 (opposite) to 1 (identical)
+        // Only use positive similarities (negative means semantically opposite)
+        // Clip to [0, 1] range for relevance scoring
+        semanticRelevance = Math.max(0, similarity);
+
+        // Debug logging for tests
+        if (process.env.NODE_ENV === "test") {
+          console.log(`  Entry: "${entry.title.substring(0, 50)}"
+    Token: ${tokenRelevance.toFixed(3)}, Semantic: ${semanticRelevance.toFixed(3)}, Combined: ${Math.max(tokenRelevance, semanticRelevance).toFixed(3)}`);
+        }
+      } catch (error) {
+        // Dimension mismatch or other error - skip semantic scoring
+        semanticRelevance = 0;
+      }
+    }
+
+    // Combine: take max of token and semantic relevance
+    // This ensures we find entries even if keywords don't match
+    const relevance = Math.max(tokenRelevance, semanticRelevance);
+
     const effective = calculateEffectiveScore(
       entry.importance,
       entry.created,
@@ -242,7 +310,7 @@ function sortByRelevanceScore(
 
     return {
       entry,
-      relevance, // Keep relevance for filtering
+      relevance,
       score: relevance * effective,
     };
   });

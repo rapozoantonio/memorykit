@@ -53,6 +53,32 @@ export const storeMemoryTool = {
         },
         required: ["tokens_consumed", "tool_calls"],
       },
+      entities: {
+        type: "array",
+        description:
+          "Entities and relationships extracted from content (Tier 2: enables relationship queries like 'what uses X?')",
+        items: {
+          type: "object",
+          properties: {
+            name: {
+              type: "string",
+              description: "Entity name (e.g., 'UserService', 'PostgreSQL')",
+            },
+            type: {
+              type: "string",
+              description:
+                "Entity type (e.g., 'service', 'database', 'concept')",
+            },
+            relationships: {
+              type: "array",
+              items: { type: "string" },
+              description:
+                "Relationships to other entities (e.g., ['uses PostgreSQL', 'calls AuthService'])",
+            },
+          },
+          required: ["name"],
+        },
+      },
     },
     required: ["content"],
   },
@@ -72,6 +98,7 @@ export async function handleStoreMemory(args: unknown): Promise<any> {
     scope: v.data.scope as StoreOptions["scope"],
     file_hint: v.data.file_hint,
     acquisition_context: v.data.acquisition_context,
+    entities: v.data.entities,
   };
   const result = await storeMemory(v.data.content, options);
 

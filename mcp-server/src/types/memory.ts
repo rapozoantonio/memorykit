@@ -23,6 +23,18 @@ export interface AcquisitionContext {
 }
 
 /**
+ * Entity extracted from memory content (Tier 2)
+ */
+export interface Entity {
+  /** Entity name (e.g., "UserService", "PostgreSQL") */
+  name: string;
+  /** Entity type (e.g., "service", "database", "concept") */
+  type?: string;
+  /** Relationships to other entities (e.g., ["uses PostgreSQL", "calls AuthService"]) */
+  relationships?: string[];
+}
+
+/**
  * Memory scope: project-specific or global
  */
 export enum MemoryScope {
@@ -91,6 +103,10 @@ export interface MemoryEntry {
   promoted_from?: MemoryLayer;
   /** Acquisition context - cost to produce this knowledge (internal only) */
   acquisition?: AcquisitionContext;
+  /** Embedding vector for semantic search (Tier 1, internal only) */
+  embedding?: number[];
+  /** Extracted entities (Tier 2, internal only) */
+  entities?: Entity[];
 }
 
 /**
@@ -160,6 +176,7 @@ export interface StoreOptions {
   scope?: MemoryScope;
   file_hint?: string;
   acquisition_context?: AcquisitionContext;
+  entities?: Entity[];
 }
 
 /**

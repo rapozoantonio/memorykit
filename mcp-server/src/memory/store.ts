@@ -26,6 +26,8 @@ import {
   checkContradiction,
 } from "./quality-gate.js";
 import { existsSync, readdirSync } from "fs";
+import { embedText } from "./embedding.js"; // Tier 1
+import { indexEntities } from "./entity-graph.js"; // Tier 2
 
 // Consolidation debouncing with status tracking
 let lastConsolidationTime = 0;
@@ -155,8 +157,33 @@ export async function storeMemory(
   if (options.acquisition_context)
     entry.acquisition = options.acquisition_context;
 
+  // Tier 1: Generate embedding for semantic search (async, non-blocking)
+  try {
+    const embeddingText = `${entry.title} ${entry.what} ${entry.tags.join(" ")}`;
+    entry.embedding = await embedText(embeddingText);
+  } catch (error) {
+    // Embedding generation failed - log but don't block storage
+    console.warn("Failed to generate embedding:", error);
+  }
+
+  // Tier 2: Store entities for relationship queries
+  if (options.entities && options.entities.length > 0) {
+    entry.entities = options.entities;
+  }
+
   // Write entry
   await appendEntry(filePath, entry);
+
+  // Tier 2: Index entities after successful write (fire and forget)
+  if (entry.entities && entry.entities.length > 0) {
+    indexEntities(
+      entry.id,
+      entry.entities,
+      scope === Scope.Project ? "project" : "global",
+    ).catch((err: Error) => {
+      console.error("Failed to index entities:", err);
+    });
+  }
 
   // Debounced consolidation - fire and forget
   if (

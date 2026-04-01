@@ -33,6 +33,15 @@ export const StoreMemorySchema = z.object({
       tool_calls: z.number().int().nonnegative(),
     })
     .optional(),
+  entities: z
+    .array(
+      z.object({
+        name: z.string().min(1, "entity name must not be empty"),
+        type: z.string().optional(),
+        relationships: z.array(z.string()).optional(),
+      }),
+    )
+    .optional(),
 });
 
 export const RetrieveContextSchema = z.object({
