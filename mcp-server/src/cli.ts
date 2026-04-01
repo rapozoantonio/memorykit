@@ -27,42 +27,43 @@ export async function initCommand(options: {
 }): Promise<void> {
   const root = options.global ? resolveGlobalRoot() : resolveProjectRoot();
 
+  // Create memory directory structure if it doesn't exist
   if (existsSync(root)) {
     console.log(`✅ Memory already initialized at: ${root}`);
-    return;
+  } else {
+    // Create directory structure
+    mkdirSync(root, { recursive: true });
+    mkdirSync(join(root, MemoryLayer.Working), { recursive: true });
+    mkdirSync(join(root, MemoryLayer.Facts), { recursive: true });
+    mkdirSync(join(root, MemoryLayer.Episodes), { recursive: true });
+    mkdirSync(join(root, MemoryLayer.Procedures), { recursive: true });
+
+    // Create config file
+    const configPath = join(root, "memorykit.yaml");
+    const configContent = stringifyYaml(getDefaultConfig());
+    writeFileSync(configPath, configContent, "utf-8");
+
+    // Create session.md template
+    const sessionPath = join(root, MemoryLayer.Working, "session.md");
+    const sessionContent = `# Working Memory\n\nCurrent session context and active tasks.\n\n---\n`;
+    writeFileSync(sessionPath, sessionContent, "utf-8");
+
+    // Create .gitkeep files
+    writeFileSync(join(root, MemoryLayer.Facts, ".gitkeep"), "", "utf-8");
+    writeFileSync(join(root, MemoryLayer.Episodes, ".gitkeep"), "", "utf-8");
+    writeFileSync(join(root, MemoryLayer.Procedures, ".gitkeep"), "", "utf-8");
+
+    console.log(`✅ Initialized MemoryKit at: ${root}`);
+    console.log(`\nStructure:`);
+    console.log(`  ${root}/`);
+    console.log(`  ├── memorykit.yaml`);
+    console.log(`  ├── working/session.md`);
+    console.log(`  ├── facts/`);
+    console.log(`  ├── episodes/`);
+    console.log(`  └── procedures/`);
   }
 
-  // Create directory structure
-  mkdirSync(root, { recursive: true });
-  mkdirSync(join(root, MemoryLayer.Working), { recursive: true });
-  mkdirSync(join(root, MemoryLayer.Facts), { recursive: true });
-  mkdirSync(join(root, MemoryLayer.Episodes), { recursive: true });
-  mkdirSync(join(root, MemoryLayer.Procedures), { recursive: true });
-
-  // Create config file
-  const configPath = join(root, "memorykit.yaml");
-  const configContent = stringifyYaml(getDefaultConfig());
-  writeFileSync(configPath, configContent, "utf-8");
-
-  // Create session.md template
-  const sessionPath = join(root, MemoryLayer.Working, "session.md");
-  const sessionContent = `# Working Memory\n\nCurrent session context and active tasks.\n\n---\n`;
-  writeFileSync(sessionPath, sessionContent, "utf-8");
-
-  // Create .gitkeep files
-  writeFileSync(join(root, MemoryLayer.Facts, ".gitkeep"), "", "utf-8");
-  writeFileSync(join(root, MemoryLayer.Episodes, ".gitkeep"), "", "utf-8");
-  writeFileSync(join(root, MemoryLayer.Procedures, ".gitkeep"), "", "utf-8");
-
-  console.log(`✅ Initialized MemoryKit at: ${root}`);
-  console.log(`\nStructure:`);
-  console.log(`  ${root}/`);
-  console.log(`  ├── memorykit.yaml`);
-  console.log(`  ├── working/session.md`);
-  console.log(`  ├── facts/`);
-  console.log(`  ├── episodes/`);
-  console.log(`  └── procedures/`);
-
+  // Create MCP config files (independent of memory directory existence)
   if (!options.global) {
     // Create .vscode/mcp.json for workspace config
     const workingDir = getWorkingDirectory();
