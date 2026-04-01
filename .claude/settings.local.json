@@ -13,7 +13,12 @@
       "Bash(docker images:*)",
       "Bash(docker logs:*)",
       "Bash(docker exec:*)",
-      "Bash(docker restart:*)"
+      "Bash(docker restart:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(dotnet test:*)",
+      "Bash(echo:*)",
+      "Bash(dotnet build:*)"
     ]
   }
 }

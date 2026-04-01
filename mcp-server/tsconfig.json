@@ -13,5 +13,13 @@
     "declaration": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/api-client.ts",
+    "src/process-manager.ts",
+    "src/process-manager-dev.ts",
+    "src/index-dev.ts",
+    "src/tools/index.ts"
+  ]
 }
