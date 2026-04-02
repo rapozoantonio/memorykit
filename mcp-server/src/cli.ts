@@ -118,6 +118,106 @@ export async function initCommand(options: {
     } else {
       console.log(`\n⚠️  .mcp.json already exists, skipping`);
     }
+
+    // Create CLAUDE.md for Claude Code AI instructions
+    const claudeMdPath = join(workingDir, "CLAUDE.md");
+    const claudeMdContent = `# Project Memory Instructions
+
+This project uses **MemoryKit** for persistent memory across AI conversations.
+
+## Before Starting Any Task
+
+Use \`retrieve_context\` to check for relevant memories:
+- Past decisions about the topic
+- Bugs or issues encountered before
+- Established patterns and conventions
+
+## When Completing Work
+
+Use \`store_memory\` to save important knowledge:
+- **facts** layer: Architecture decisions, technology choices, constraints
+- **episodes** layer: Bugs fixed, failed approaches, incidents
+- **procedures** layer: Coding patterns, conventions, workflows
+
+## Memory Best Practices
+
+- Include WHY (reasoning), not just WHAT (the decision)
+- Reference related files or code when relevant
+- Use descriptive tags for better retrieval
+`;
+
+    if (!existsSync(claudeMdPath)) {
+      writeFileSync(claudeMdPath, claudeMdContent, "utf-8");
+      console.log(`\n✅ Created Claude Code instructions: ${claudeMdPath}`);
+    } else {
+      // Check if MemoryKit section already exists
+      const existingContent = readFileSync(claudeMdPath, "utf-8");
+      if (!existingContent.includes("## Before Starting Any Task")) {
+        writeFileSync(
+          claudeMdPath,
+          existingContent + "\n\n" + claudeMdContent,
+          "utf-8",
+        );
+        console.log(`\n✅ Added MemoryKit section to: ${claudeMdPath}`);
+      } else {
+        console.log(
+          `\n⚠️  CLAUDE.md already has MemoryKit instructions, skipping`,
+        );
+      }
+    }
+
+    // Create or append to .github/copilot-instructions.md
+    const githubDir = join(workingDir, ".github");
+    const copilotInstructionsPath = join(githubDir, "copilot-instructions.md");
+
+    const memoryKitInstructions = `
+## Memory System (MemoryKit)
+
+This project uses MemoryKit for persistent memory across conversations.
+
+### Before Starting Any Task
+- Call \`retrieve_context\` with the task description to check for relevant past decisions, bugs, or patterns
+
+### When Completing Work
+- Use \`store_memory\` to save architectural decisions (facts layer)
+- Use \`store_memory\` to record bugs and fixes (episodes layer)
+- Use \`store_memory\` to document patterns and conventions (procedures layer)
+
+### Memory Best Practices
+- Include the reasoning (WHY), not just the decision (WHAT)
+- Reference related files when relevant
+- Use descriptive tags for better retrieval
+`;
+
+    if (!existsSync(copilotInstructionsPath)) {
+      mkdirSync(githubDir, { recursive: true });
+      writeFileSync(
+        copilotInstructionsPath,
+        memoryKitInstructions.trim() + "\n",
+        "utf-8",
+      );
+      console.log(
+        `\n✅ Created Copilot instructions: ${copilotInstructionsPath}`,
+      );
+    } else {
+      // Check if MemoryKit section already exists
+      const existingContent = readFileSync(copilotInstructionsPath, "utf-8");
+      if (!existingContent.includes("## Memory System (MemoryKit)")) {
+        // Append to existing file
+        writeFileSync(
+          copilotInstructionsPath,
+          existingContent + "\n" + memoryKitInstructions,
+          "utf-8",
+        );
+        console.log(
+          `\n✅ Added MemoryKit section to: ${copilotInstructionsPath}`,
+        );
+      } else {
+        console.log(
+          `\n⚠️  MemoryKit instructions already in copilot-instructions.md, skipping`,
+        );
+      }
+    }
   }
 }
 

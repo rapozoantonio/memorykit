@@ -4,22 +4,22 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync, readFileSync, existsSync } from "fs";
+import { mkdtempSync, rmSync, readFileSync, existsSync, mkdirSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 import { initCommand } from "../cli.js";
 
 describe("CLI init command", () => {
   let testDir: string;
-  const originalCwd = process.cwd();
+  const originalEnv = process.env.MEMORYKIT_PROJECT;
 
   beforeEach(() => {
     testDir = mkdtempSync(join(tmpdir(), "memorykit-cli-test-"));
-    process.chdir(testDir);
+    process.env.MEMORYKIT_PROJECT = testDir;
   });
 
   afterEach(() => {
-    process.chdir(originalCwd);
+    process.env.MEMORYKIT_PROJECT = originalEnv;
     try {
       rmSync(testDir, { recursive: true, force: true });
     } catch (err) {
@@ -110,5 +110,127 @@ describe("CLI init command", () => {
 
     expect(existsSync(join(testDir, ".vscode", "mcp.json"))).toBe(true);
     expect(existsSync(join(testDir, ".mcp.json"))).toBe(true);
+  });
+
+  it("should create CLAUDE.md with MemoryKit instructions", async () => {
+    await initCommand({});
+
+    const claudeMd = join(testDir, "CLAUDE.md");
+    expect(existsSync(claudeMd)).toBe(true);
+
+    const content = readFileSync(claudeMd, "utf-8");
+    expect(content).toContain("# Project Memory Instructions");
+    expect(content).toContain("MemoryKit");
+    expect(content).toContain("retrieve_context");
+    expect(content).toContain("store_memory");
+    expect(content).toContain("## Before Starting Any Task");
+    expect(content).toContain("## When Completing Work");
+  });
+
+  it("should create .github/copilot-instructions.md with MemoryKit section", async () => {
+    await initCommand({});
+
+    const copilotInstructions = join(
+      testDir,
+      ".github",
+      "copilot-instructions.md",
+    );
+    expect(existsSync(copilotInstructions)).toBe(true);
+
+    const content = readFileSync(copilotInstructions, "utf-8");
+    expect(content).toContain("## Memory System (MemoryKit)");
+    expect(content).toContain("retrieve_context");
+    expect(content).toContain("store_memory");
+  });
+
+  it("should append to existing CLAUDE.md without MemoryKit section", async () => {
+    const claudeMd = join(testDir, "CLAUDE.md");
+    const existingContent = "# My Project\n\nExisting instructions here.\n";
+
+    // Create pre-existing CLAUDE.md
+    mkdirSync(testDir, { recursive: true });
+    rmSync(claudeMd, { force: true });
+    const { writeFileSync } = await import("fs");
+    writeFileSync(claudeMd, existingContent, "utf-8");
+
+    await initCommand({});
+
+    const newContent = readFileSync(claudeMd, "utf-8");
+    expect(newContent).toContain("# My Project");
+    expect(newContent).toContain("Existing instructions here");
+    expect(newContent).toContain("## Before Starting Any Task");
+    expect(newContent.indexOf("Existing instructions")).toBeLessThan(
+      newContent.indexOf("## Before Starting Any Task"),
+    );
+  });
+
+  it("should append to existing copilot-instructions.md without MemoryKit section", async () => {
+    const githubDir = join(testDir, ".github");
+    const copilotInstructions = join(githubDir, "copilot-instructions.md");
+    const existingContent = "# Existing Copilot Rules\n\nSome rules here.\n";
+
+    // Create pre-existing file
+    const { mkdirSync, writeFileSync } = await import("fs");
+    mkdirSync(githubDir, { recursive: true });
+    writeFileSync(copilotInstructions, existingContent, "utf-8");
+
+    await initCommand({});
+
+    const newContent = readFileSync(copilotInstructions, "utf-8");
+    expect(newContent).toContain("# Existing Copilot Rules");
+    expect(newContent).toContain("Some rules here");
+    expect(newContent).toContain("## Memory System (MemoryKit)");
+    expect(newContent.indexOf("Some rules here")).toBeLessThan(
+      newContent.indexOf("## Memory System (MemoryKit)"),
+    );
+  });
+
+  it("should skip CLAUDE.md if MemoryKit section already exists", async () => {
+    const claudeMd = join(testDir, "CLAUDE.md");
+    const existingContent = `# My Project
+
+## Before Starting Any Task
+
+Already has MemoryKit stuff.
+`;
+
+    const { writeFileSync } = await import("fs");
+    writeFileSync(claudeMd, existingContent, "utf-8");
+
+    await initCommand({});
+
+    const newContent = readFileSync(claudeMd, "utf-8");
+    // Should not duplicate
+    expect(newContent).toBe(existingContent);
+  });
+
+  it("should skip copilot-instructions.md if MemoryKit section already exists", async () => {
+    const githubDir = join(testDir, ".github");
+    const copilotInstructions = join(githubDir, "copilot-instructions.md");
+    const existingContent = `# Rules
+
+## Memory System (MemoryKit)
+
+Already configured.
+`;
+
+    const { mkdirSync, writeFileSync } = await import("fs");
+    mkdirSync(githubDir, { recursive: true });
+    writeFileSync(copilotInstructions, existingContent, "utf-8");
+
+    await initCommand({});
+
+    const newContent = readFileSync(copilotInstructions, "utf-8");
+    // Should not duplicate
+    expect(newContent).toBe(existingContent);
+  });
+
+  it("should not create AI instruction files when global flag is used", async () => {
+    await initCommand({ global: true });
+
+    expect(existsSync(join(testDir, "CLAUDE.md"))).toBe(false);
+    expect(
+      existsSync(join(testDir, ".github", "copilot-instructions.md")),
+    ).toBe(false);
   });
 });

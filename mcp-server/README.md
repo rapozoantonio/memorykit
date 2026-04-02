@@ -34,13 +34,21 @@ cd /your/project
 memorykit init
 ```
 
-This creates `~/.memorykit/<project-name>/` and generates `.vscode/mcp.json` (for GitHub Copilot) and `.mcp.json` (for Claude Code) automatically.
+This creates:
+
+- `~/.memorykit/<project-name>/` — Memory storage directory
+- `.vscode/mcp.json` — GitHub Copilot MCP server config
+- `.mcp.json` — Claude Code MCP server config
+- `CLAUDE.md` — Claude Code instructions to use memory proactively
+- `.github/copilot-instructions.md` — GitHub Copilot instructions to use memory proactively
+
+The instruction files tell AI models to automatically check memory before starting tasks and save learnings when completing work. This ensures memory is used consistently without manual prompting.
 
 ### 3. Configure your AI assistant
 
-**GitHub Copilot in VS Code** — Already configured! `memorykit init` creates `.vscode/mcp.json` automatically.
+**GitHub Copilot in VS Code** — Already configured! `memorykit init` creates `.vscode/mcp.json` and `.github/copilot-instructions.md` automatically. The instructions tell Copilot to check memory before tasks and save learnings after.
 
-**Claude Code in VS Code** — Already configured! `memorykit init` creates `.mcp.json` automatically.
+**Claude Code in VS Code** — Already configured! `memorykit init` creates `.mcp.json` and `CLAUDE.md` automatically. The instructions tell Claude to check memory before tasks and save learnings after.
 
 **Claude Desktop** — Edit the config file:
 
