@@ -126,7 +126,7 @@ export function parseEntry(
   }
 
   // Validate required fields
-  if (!fields.what || !fields.tags || !fields.importance || !fields.created) {
+  if (!fields.what || fields.tags === undefined || !fields.importance || !fields.created) {
     return null;
   }
 
