@@ -334,7 +334,7 @@ export function createCLI(): Command {
   program
     .name("memorykit")
     .description("Cognitive memory for AI coding assistants")
-    .version("0.1.0");
+    .version("0.2.0");
 
   program
     .command("init")
