@@ -394,7 +394,7 @@ jobs:
             -p:IncludeNativeLibrariesForSelfExtract=true
 
       - name: Azure Login
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS_DEV }}
 
@@ -445,7 +445,7 @@ jobs:
             -p:DebugSymbols=false
 
       - name: Azure Login
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS_PROD }}
 
