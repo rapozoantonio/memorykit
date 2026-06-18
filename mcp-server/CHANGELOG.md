@@ -23,6 +23,10 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Embedding model load had no timeout — a blocked or slow network could hang a tool call indefinitely; now times out after 30s and falls back to keyword-only search
 - `memorykit --version` reported a hardcoded `"0.2.0"` string in `cli.ts`, independent of `package.json` — the 0.2.0 changelog claimed version drift was fixed, but that only covered the MCP handshake version in `server.ts`. Now reads from `package.json` the same way.
 
+### Fixed (Linux-critical, caught by CI after first tag push)
+
+- `sharp@0.32.6` (a hard transitive dependency of `@xenova/transformers`, not optional) crashed with `Module did not self-register` followed by a **segmentation fault** on `ubuntu-latest`, killing the whole process — this could not be caught by any try/catch since it's a native crash, not a JS exception. Forced via npm `overrides` to `sharp@^0.33.0` (resolved `0.33.5`), which moved to per-platform `@img/sharp-*` packages with far more reliable prebuilt binaries. Verified: full test suite green on both Windows and Ubuntu after the override.
+
 ### Added
 
 - `SIGTERM`/`SIGINT` graceful shutdown handlers

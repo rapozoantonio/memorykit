@@ -64,6 +64,9 @@
     "yaml": "^2.3.0",
     "zod": "^3.22.0"
   },
+  "overrides": {
+    "sharp": "^0.33.0"
+  },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "tsx": "^4.7.0",

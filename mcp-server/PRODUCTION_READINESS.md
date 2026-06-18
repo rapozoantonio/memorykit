@@ -32,8 +32,13 @@ git push origin memorykit-mcp-server-v1.0.0
 ```
 (The commit itself was already pushed to `main` separately.) This is the actual "go live" action — a published npm version cannot be unpublished after 72 hours (npm policy). Once the tag is pushed, watch the Actions tab: `mcp-server-test` runs first, then `mcp-server-publish` runs only if tests pass — and only those two jobs should run, not the .NET Docker/Release jobs.
 
-### 1.5 ARM64 Linux verification (open, can't be resolved by static analysis)
-`@xenova/transformers`'s native dependency (`onnxruntime-node`) is confirmed to support `win32`/`darwin`/`linux` at the OS level (checked `package-lock.json`), but CPU architecture (x64 vs arm64) isn't declared there. The code now degrades gracefully if the embedding model fails to load (falls back to keyword-only search — verified in `store.ts`/`retrieve.ts`), so this is **not a crash risk**, but if you want to confidently claim ARM64 Linux/WSL support rather than "best-effort", it needs an actual run on that hardware (e.g. AWS Graviton, Raspberry Pi, or WSL2 on an ARM Windows host).
+### 1.5 ~~x64 Linux segfault~~ — found and fixed, correction to earlier claims
+**This invalidates earlier "Linux is fine" statements in this doc and in conversation — caught only because real CI ran on `ubuntu-latest` after the first tag push.** `sharp@0.32.6`, a **hard** (non-optional) transitive dependency of `@xenova/transformers`, crashed with `Module did not self-register` followed by a segmentation fault on Ubuntu — a native crash, not a JS exception, so none of the try/catch hardening done earlier could have caught it. Root cause: an old sharp version with less reliable Linux prebuilt binaries. Fix: forced `sharp` to `^0.33.0` (resolved `0.33.5`) via npm `overrides` in `package.json`. Verified: full 204-test suite passes on both Windows and Ubuntu after the fix (pending final Ubuntu CI confirmation post-push).
+
+This is exactly the class of risk flagged earlier as "theoretical/unverified" for `onnxruntime-node` on ARM64 — except it turned out to be `sharp` on plain x64 Linux, which is a much more common deployment target. Take this as a concrete reason not to fully trust "should work on Linux" claims for native-dependency-heavy packages without actually running CI on that OS — which is precisely why the `mcp-server-test` Ubuntu leg was worth adding.
+
+### 1.6 ARM64 Linux verification (still open, can't be resolved by static analysis)
+With the x64 segfault fixed, ARM64 (WSL2 on an ARM Windows host, Raspberry Pi, AWS Graviton) is the remaining unverified platform. `onnxruntime-node`'s `package-lock.json` entry confirms OS-level support for `win32`/`darwin`/`linux` but doesn't declare CPU architecture. The embedding code degrades gracefully if the model fails to load via a catchable error (verified in `store.ts`/`retrieve.ts`) — but as 1.5 just demonstrated, a native dependency can fail with a segfault that bypasses try/catch entirely, so "should degrade gracefully" is not the same guarantee as "tested and confirmed." Treat ARM64 as best-effort until someone actually runs it on that hardware.
 
 ---
 
@@ -74,6 +79,8 @@ Lower urgency than Section 1, but worth doing before or shortly after the first 
 - Bumped version to `1.0.0`, with a CHANGELOG entry documenting the rename and fixes.
 - Fixed `memorykit --version` reporting a hardcoded `"0.2.0"` in `cli.ts`, independent of `package.json` (caught when verifying the version bump actually propagated) — now reads from `package.json` like `server.ts` already did.
 - `NPM_TOKEN` GitHub secret added (Granular Access Token, All packages, Read and write).
-- Verified: clean `tsc` build, 204/204 tests passing, `npm pack --dry-run` shows correct tarball contents (86.8kB, no source/test leakage) at `memorykit-mcp-server@1.0.0`, `--version` correctly reports `1.0.0`, and a live stdio `initialize` JSON-RPC round-trip confirmed stdout carries only protocol messages.
+- Scoped CI tag triggers to `memorykit-mcp-server-v*` so npm releases never collide with the unrelated .NET `v1.0.0` tag or trigger its Docker/Release jobs.
+- First tag push (`memorykit-mcp-server-v1.0.0`) surfaced a real segfault on `ubuntu-latest` from an old transitive `sharp` dependency — fixed via npm `overrides` forcing `sharp@^0.33.0`. See 1.5.
+- Verified: clean `tsc` build, 204/204 tests passing on Windows, `npm pack --dry-run` shows correct tarball contents at `memorykit-mcp-server@1.0.0`, `--version` correctly reports `1.0.0`, and a live stdio `initialize` JSON-RPC round-trip confirmed stdout carries only protocol messages.
 
-**The only remaining blocking step is 1.4 above: commit, tag `v1.0.0`, and push.**
+**Status: the sharp fix is pushed to `main`; waiting on CI to confirm the Ubuntu leg of `mcp-server-test` is green before re-tagging `memorykit-mcp-server-v1.0.0` and re-triggering the publish.**
