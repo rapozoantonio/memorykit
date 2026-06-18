@@ -4,6 +4,32 @@
 
 ---
 
+## The Memory That Pays for Itself
+
+Most memory tools store everything and make you pay full re-discovery cost on every retrieval. MemoryKit doesn't:
+
+- **Costs scale with the question, not your history** — a quick check-in costs ~200 tokens, a deep recall costs up to 1,500. Never the whole store.
+- **Junk never gets stored** — low-value and duplicate entries are rejected before they're written, so you're not paying to filter noise later.
+- **It shrinks itself** — stale entries auto-prune, important ones auto-promote. No manual cleanup, no slow bloat after months of use.
+- **You see the receipt** — every retrieval reports real numbers: tokens spent learning a fact vs. tokens spent recalling it.
+
+| You ask | Context budget |
+| --- | --- |
+| "what was I doing?" | ~200 tokens |
+| "how do I deploy this?" | ~300 tokens |
+| "what's our DB choice?" | ~500 tokens |
+| "what happened last week?" | ~1,500 tokens |
+
+*Example: spend 1,200 tokens figuring something out once, recall it for ~70 tokens later — MemoryKit reports that 94% efficiency gain back to you, every time.*
+
+## Accurate, Not Just Fast
+
+- **Understands meaning, not just keywords** — semantic search catches paraphrased questions a plain keyword match would miss.
+- **Recent + important wins over "kinda similar"** — stale notes don't outrank what actually matters right now.
+- **Catches contradictions** — conflicting info gets flagged, not silently duplicated.
+
+---
+
 ## How It Works
 
 MemoryKit stores memories as Markdown files on your local filesystem using a brain-inspired 4-layer architecture:
