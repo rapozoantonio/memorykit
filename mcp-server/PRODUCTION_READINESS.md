@@ -1,6 +1,8 @@
 # Production Readiness TRD — MemoryKit MCP Server
 
-Status as of this document: code-level blockers are fixed and verified (build, 204 tests, `npm pack`, live JSON-RPC handshake all pass). What remains is account/infrastructure setup only you can do, one open hardware-verification gap, and a short list of non-blocking hardening work.
+## ✅ PUBLISHED: `memorykit-mcp-server@1.0.0` is live on npm
+
+Verified end-to-end: `npx -y memorykit-mcp-server@1.0.0 --version` → `1.0.0`. Install with `npm install -g memorykit-mcp-server`. Everything below is now historical record of how it got there — kept for context on real issues hit along the way (the sharp/onnxruntime-node Linux instability in particular, section 1.5, is still a live caveat worth reading even though the package shipped).
 
 ---
 
@@ -94,6 +96,7 @@ Lower urgency than Section 1, but worth doing before or shortly after the first 
 - First tag push (`memorykit-mcp-server-v1.0.0`) surfaced a real segfault on `ubuntu-latest` from an old transitive `sharp` dependency — fixed via npm `overrides` forcing `sharp@^0.33.0`. See 1.5.
 - After that, `onnxruntime-node` proved unstable on Ubuntu across three further attempts (unhandled rejection → broken backend registration → broken Tensor API → heap-corruption abort) — resolved by setting `MEMORYKIT_SKIP_EMBEDDINGS=true` for the Ubuntu CI leg specifically, leaving Windows CI to exercise the real embedding path. See 1.5.
 - Verified: clean `tsc` build, 204/204 tests passing on Windows (both with and without embeddings enabled), `npm pack --dry-run` shows correct tarball contents at `memorykit-mcp-server@1.0.0`, `--version` correctly reports `1.0.0`, and a live stdio `initialize` JSON-RPC round-trip confirmed stdout carries only protocol messages.
-- **Pending:** final CI confirmation that the Ubuntu leg of `mcp-server-test` is green with `MEMORYKIT_SKIP_EMBEDDINGS=true`, after which the tag can be safely re-pushed to trigger the actual npm publish.
+- CI confirmed green on both Ubuntu and Windows; tag re-pushed; publish job initially failed (`403`, token lacked 2FA-bypass — fixed by regenerating the npm token with bypass enabled and updating the `NPM_TOKEN` secret); re-ran the job and it succeeded.
+- **`memorykit-mcp-server@1.0.0` is live on npm**, confirmed via `npm view` and a real `npx -y memorykit-mcp-server@1.0.0 --version` install.
 
 **Status: the sharp fix is pushed to `main`; waiting on CI to confirm the Ubuntu leg of `mcp-server-test` is green before re-tagging `memorykit-mcp-server-v1.0.0` and re-triggering the publish.**
