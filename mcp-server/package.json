@@ -1,6 +1,6 @@
 {
-  "name": "memorykit",
-  "version": "0.2.0",
+  "name": "memorykit-mcp-server",
+  "version": "1.0.0",
   "description": "Cognitive memory for AI coding assistants — persistent memory across conversations for Claude, Copilot, and Cursor",
   "type": "module",
   "main": "./dist/index.js",
@@ -26,8 +26,9 @@
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
     "test": "vitest",
+    "test:ci": "vitest run",
     "prepare": "npm run build",
-    "prepublishOnly": "npm test && npm run build"
+    "prepublishOnly": "npm run test:ci && npm run build"
   },
   "keywords": [
     "mcp",
@@ -45,13 +46,13 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/antonio-rapozo/memorykit.git",
+    "url": "https://github.com/rapozoantonio/memorykit.git",
     "directory": "mcp-server"
   },
   "bugs": {
-    "url": "https://github.com/antonio-rapozo/memorykit/issues"
+    "url": "https://github.com/rapozoantonio/memorykit/issues"
   },
-  "homepage": "https://github.com/antonio-rapozo/memorykit#readme",
+  "homepage": "https://github.com/rapozoantonio/memorykit#readme",
   "engines": {
     "node": ">=18.0.0"
   },

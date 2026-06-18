@@ -24,7 +24,7 @@ Memories are stored under `~/.memorykit/<project-name>/` — isolated per projec
 ### 1. Install
 
 ```bash
-npm install -g memorykit
+npm install -g memorykit-mcp-server
 ```
 
 ### 2. Initialize in your project

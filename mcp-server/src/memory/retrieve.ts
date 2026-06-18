@@ -264,7 +264,7 @@ async function sortByRelevanceScore(
     const withEmbeddings = entriesWithEmbeddings.filter(
       (e) => e.embedding,
     ).length;
-    console.log(`\nSemantic scoring for query: "${query}"
+    console.error(`\nSemantic scoring for query: "${query}"
   Query embedding: ${queryEmbedding ? "✓" : "✗"}
   Entries with embeddings: ${withEmbeddings}/${entriesWithEmbeddings.length}`);
   }
@@ -289,7 +289,7 @@ async function sortByRelevanceScore(
 
         // Debug logging for tests
         if (process.env.NODE_ENV === "test") {
-          console.log(`  Entry: "${entry.title.substring(0, 50)}"
+          console.error(`  Entry: "${entry.title.substring(0, 50)}"
     Token: ${tokenRelevance.toFixed(3)}, Semantic: ${semanticRelevance.toFixed(3)}, Combined: ${Math.max(tokenRelevance, semanticRelevance).toFixed(3)}`);
         }
       } catch (error) {

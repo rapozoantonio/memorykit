@@ -7,6 +7,32 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.0.0] — 2026-06-18
+
+### Changed
+
+- **BREAKING**: Package renamed from `memorykit` to `memorykit-mcp-server` for npm publishing — the unscoped `memorykit` name was already claimed by an unrelated, abandoned package. The CLI command remains `memorykit`; only the npm package name changed.
+- `repository`, `bugs`, `homepage` fields corrected to match the actual GitHub remote (`rapozoantonio/memorykit`)
+- `prepublishOnly` now runs `vitest run` (non-interactive) via a new `test:ci` script instead of `vitest` (watch mode), avoiding a hang on a local `npm publish`
+
+### Fixed
+
+- Two debug `console.log` calls in `retrieve.ts` could have corrupted the stdout JSON-RPC stream if `NODE_ENV=test` ever leaked into a real client launch — moved to `console.error`
+- MCP server previously connected and accepted requests even with no memory directory initialized, failing opaquely on the first tool call — now exits with a clear instruction if neither project nor global memory is initialized
+- `@xenova/transformers` was imported statically, so a native-binary load failure (e.g. on an unsupported CPU architecture) would have crashed the server at startup instead of degrading gracefully — import is now dynamic and lazy, loaded inside the existing try/catch
+- Embedding model load had no timeout — a blocked or slow network could hang a tool call indefinitely; now times out after 30s and falls back to keyword-only search
+- `memorykit --version` reported a hardcoded `"0.2.0"` string in `cli.ts`, independent of `package.json` — the 0.2.0 changelog claimed version drift was fixed, but that only covered the MCP handshake version in `server.ts`. Now reads from `package.json` the same way.
+
+### Added
+
+- `SIGTERM`/`SIGINT` graceful shutdown handlers
+- `MEMORYKIT_SKIP_EMBEDDINGS=true` environment variable to skip embedding generation entirely (airgapped/offline use)
+- First-run log message when the embedding model is downloading
+- CI: `mcp-server-test` job running the test suite on Ubuntu and Windows (previously never run in CI)
+- CI: `mcp-server-publish` job, tag-gated on `v*`, publishes to npm
+
+---
+
 ## [0.2.0] — 2026-03-04
 
 ### Fixed

@@ -19,6 +19,10 @@ const _pkgPath = join(
   "package.json",
 );
 const _pkg = JSON.parse(readFileSync(_pkgPath, "utf-8")) as { version: string };
+import {
+  isProjectInitialized,
+  isGlobalInitialized,
+} from "./storage/scope-resolver.js";
 import { storeMemoryTool, handleStoreMemory } from "./tools/store-memory.js";
 import {
   retrieveContextTool,
@@ -128,8 +132,19 @@ export function createServer(): Server {
  * Start MCP server with stdio transport
  */
 export async function startServer(): Promise<void> {
+  if (!isProjectInitialized() && !isGlobalInitialized()) {
+    console.error(
+      '[MemoryKit] No memory directory found. Run "memorykit init" in your project ' +
+        '(or "memorykit init --global") before starting the server.',
+    );
+    process.exit(1);
+  }
+
   const server = createServer();
   const transport = new StdioServerTransport();
+
+  process.on("SIGTERM", () => process.exit(0));
+  process.on("SIGINT", () => process.exit(0));
 
   await server.connect(transport);
 

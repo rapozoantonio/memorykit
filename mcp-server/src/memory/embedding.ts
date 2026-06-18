@@ -4,24 +4,46 @@
  * No API calls, runs entirely on user's machine
  */
 
-import { pipeline, env } from "@xenova/transformers";
-
-// Disable remote model loading progress bars in production
-env.allowLocalModels = true;
-
 // Cache the pipeline instance
 let embedder: any = null;
+
+const MODEL_LOAD_TIMEOUT_MS = 30_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(message)), ms),
+    ),
+  ]);
+}
 
 /**
  * Initialize the embedding pipeline (lazy loaded)
  * Uses all-MiniLM-L6-v2: 384 dimensions, ~23MB, optimized for semantic similarity
+ *
+ * The @xenova/transformers import is dynamic (not static) because it loads a
+ * platform-specific native binary (onnxruntime-node). On unsupported platforms
+ * (e.g. some ARM64 Linux setups) that load can fail — a static top-level import
+ * would crash the whole server at startup; a dynamic import here lets callers
+ * (store.ts, retrieve.ts) catch the failure and degrade to keyword-only search.
  */
 async function getEmbedder() {
+  if (process.env.MEMORYKIT_SKIP_EMBEDDINGS === "true") {
+    throw new Error("Embeddings disabled via MEMORYKIT_SKIP_EMBEDDINGS");
+  }
+
   if (!embedder) {
-    embedder = await pipeline(
-      "feature-extraction",
-      "Xenova/all-MiniLM-L6-v2",
-      { quantized: true }, // Use quantized version for smaller size
+    console.error("[MemoryKit] Loading embedding model (first run, ~23MB)...");
+    const { pipeline, env } = await import("@xenova/transformers");
+    env.allowLocalModels = true;
+
+    embedder = await withTimeout(
+      pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2", {
+        quantized: true, // Use quantized version for smaller size
+      }),
+      MODEL_LOAD_TIMEOUT_MS,
+      "Embedding model load timed out — falling back to keyword search",
     );
   }
   return embedder;

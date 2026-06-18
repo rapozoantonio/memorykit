@@ -4,8 +4,16 @@
 
 import { Command } from "commander";
 import { mkdirSync, writeFileSync, existsSync, readFileSync } from "fs";
-import { join } from "path";
+import { join, dirname } from "path";
 import { homedir } from "os";
+import { fileURLToPath } from "url";
+
+const _pkgPath = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "package.json",
+);
+const _pkg = JSON.parse(readFileSync(_pkgPath, "utf-8")) as { version: string };
 import { MemoryLayer, MemoryScope } from "./types/memory.js";
 import {
   resolveProjectRoot,
@@ -334,7 +342,7 @@ export function createCLI(): Command {
   program
     .name("memorykit")
     .description("Cognitive memory for AI coding assistants")
-    .version("0.2.0");
+    .version(_pkg.version);
 
   program
     .command("init")
