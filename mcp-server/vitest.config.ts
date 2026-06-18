@@ -14,12 +14,6 @@ export default defineConfig({
         "src/**/*.test.ts",
         "src/__tests__/**",
         "src/cognitive/__tests__/**",
-        // Dead code stubs
-        "src/api-client.ts",
-        "src/process-manager.ts",
-        "src/process-manager-dev.ts",
-        "src/index-dev.ts",
-        "src/tools/index.ts",
       ],
     },
   },

@@ -9,6 +9,11 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [1.0.0] — 2026-06-18
 
+### Removed
+
+- Dead code from the legacy Docker/.NET-API integration that the 0.2.0 changelog claimed was already removed but was actually still present: `src/api-client.ts`, `src/process-manager.ts`, `src/process-manager-dev.ts`, `src/index-dev.ts`, `src/tools/index.ts`, `test-docker.js`. None of these were ever included in the published npm package (excluded by the `files` whitelist), so this has no effect on already-published versions — pure source-tree hygiene.
+- A stray empty `-p` directory at the package root, left over from a `mkdir -p` typo.
+
 ### Changed
 
 - **BREAKING**: Package renamed from `memorykit` to `memorykit-mcp-server` for npm publishing — the unscoped `memorykit` name was already claimed by an unrelated, abandoned package. The CLI command remains `memorykit`; only the npm package name changed.
