@@ -20,14 +20,17 @@ Follow-up, not blocking: once `memorykit-mcp-server` exists in the registry afte
 Bumped to `1.0.0` in `package.json`, with a matching CHANGELOG entry documenting the rename and fixes.
 
 ### 1.4 Trigger the first publish — the only remaining action
+**Correction made during release:** the generic `v1.0.0` tag was already taken by the .NET side of this monorepo (tagged 2025-11-19, "Initial public release"), and the `docker` + `release` CI jobs both react to *any* `v*` tag. Reusing it would have either failed (tag already exists) or, with a different version number, cascaded into unrelated .NET Docker builds and GitHub Releases. Fixed by giving the npm package its own tag namespace: `memorykit-mcp-server-v*`. Updated in `.github/workflows/main.yml`:
+- Top-level `on.push.tags` now includes `memorykit-mcp-server-v*` alongside the existing `v*`
+- `docker` job explicitly excludes `refs/tags/memorykit-mcp-server-*`
+- `mcp-server-publish` job triggers on `refs/tags/memorykit-mcp-server-v*` specifically (not generic `refs/tags/v`)
+- `release` (.NET GitHub Release) job was already safe — it matches `refs/tags/v` literally, which `memorykit-mcp-server-v*` doesn't start with
+
 ```bash
-git add -A
-git commit -m "Release 1.0.0: rename to memorykit-mcp-server, production-readiness fixes"
-git tag v1.0.0
-git push origin main
-git push origin v1.0.0
+git tag memorykit-mcp-server-v1.0.0
+git push origin memorykit-mcp-server-v1.0.0
 ```
-This is the actual "go live" action — confirm you want it to run before pushing, since a published npm version cannot be unpublished after 72 hours (npm policy). Once the tag is pushed, watch the Actions tab: `mcp-server-test` runs first, then `mcp-server-publish` runs only if tests pass.
+(The commit itself was already pushed to `main` separately.) This is the actual "go live" action — a published npm version cannot be unpublished after 72 hours (npm policy). Once the tag is pushed, watch the Actions tab: `mcp-server-test` runs first, then `mcp-server-publish` runs only if tests pass — and only those two jobs should run, not the .NET Docker/Release jobs.
 
 ### 1.5 ARM64 Linux verification (open, can't be resolved by static analysis)
 `@xenova/transformers`'s native dependency (`onnxruntime-node`) is confirmed to support `win32`/`darwin`/`linux` at the OS level (checked `package-lock.json`), but CPU architecture (x64 vs arm64) isn't declared there. The code now degrades gracefully if the embedding model fails to load (falls back to keyword-only search — verified in `store.ts`/`retrieve.ts`), so this is **not a crash risk**, but if you want to confidently claim ARM64 Linux/WSL support rather than "best-effort", it needs an actual run on that hardware (e.g. AWS Graviton, Raspberry Pi, or WSL2 on an ARM Windows host).

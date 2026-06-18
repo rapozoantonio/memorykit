@@ -3,7 +3,7 @@ name: Enterprise CI/CD Pipeline
 on:
   push:
     branches: [main, develop, claude/**]
-    tags: ['v*']
+    tags: ['v*', 'memorykit-mcp-server-v*']
   pull_request:
     branches: [main, develop]
   workflow_dispatch:
@@ -302,7 +302,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: [build-and-test, code-quality, security]
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/tags/'))
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || (startsWith(github.ref, 'refs/tags/') && !startsWith(github.ref, 'refs/tags/memorykit-mcp-server-')))
 
     steps:
       - name: Checkout code
@@ -405,7 +405,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: [mcp-server-test]
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/memorykit-mcp-server-v')
 
     steps:
       - name: Checkout code
