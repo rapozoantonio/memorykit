@@ -1,6 +1,6 @@
 {
   "name": "memorykit-mcp-server",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Cognitive memory for AI coding assistants — persistent memory across conversations for Claude, Copilot, and Cursor",
   "type": "module",
   "main": "./dist/index.js",

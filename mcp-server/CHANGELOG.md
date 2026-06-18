@@ -7,6 +7,14 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.0.1] — 2026-06-18
+
+### Changed
+
+- README: added a concise "token efficiency" and "accuracy" benefits section, grounded in the actual scoring/retrieval mechanisms (query-scoped token budgets, write-time quality gates, self-pruning lifecycle, measured ROI, hybrid semantic+keyword relevance). Previously this was only mentioned as a single parameter description. Docs-only release — no code changes.
+
+---
+
 ## [1.0.0] — 2026-06-18
 
 ### Removed
