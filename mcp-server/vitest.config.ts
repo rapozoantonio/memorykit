@@ -5,6 +5,7 @@ export default defineConfig({
     globals: false,
     environment: "node",
     include: ["src/**/*.test.ts"],
+    setupFiles: ["src/__tests__/setup.ts"],
     testTimeout: 15000, // E2E tests with temp-dir I/O need more time
     coverage: {
       reporter: ["text", "json"],

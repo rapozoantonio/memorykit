@@ -146,6 +146,15 @@ export async function startServer(): Promise<void> {
   process.on("SIGTERM", () => process.exit(0));
   process.on("SIGINT", () => process.exit(0));
 
+  // onnxruntime-node (an optional native dependency, loaded transitively via
+  // @xenova/transformers) probes its binding asynchronously on some platforms;
+  // a failed probe rejects outside any promise this code awaits. Embedding
+  // generation itself already degrades gracefully on failure (see embedding.ts),
+  // so this only prevents that unrelated probe from taking down the process.
+  process.on("unhandledRejection", (reason) => {
+    console.error("[MemoryKit] Unhandled rejection (non-fatal):", reason);
+  });
+
   await server.connect(transport);
 
   console.error("[MemoryKit] MCP server ready");
