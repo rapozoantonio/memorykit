@@ -441,6 +441,9 @@ jobs:
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # prepublishOnly re-runs the test suite on this ubuntu-latest job;
+          # see mcp-server-test's same env var for why this is needed here too.
+          MEMORYKIT_SKIP_EMBEDDINGS: 'true'
 
   # ============================================================================
   # DEPLOY TO AZURE DEV
