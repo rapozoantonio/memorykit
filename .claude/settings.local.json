@@ -18,7 +18,38 @@
       "Bash(git push:*)",
       "Bash(dotnet test:*)",
       "Bash(echo:*)",
-      "Bash(dotnet build:*)"
+      "Bash(dotnet build:*)",
+      "Bash(npm view *)",
+      "Bash(npm pack *)",
+      "Bash(node dist/index.js --version)",
+      "Read(//c/Users/rapoz/.memorykit/**)",
+      "Bash(node -e \"console.log\\(require\\('os'\\).homedir\\(\\)\\)\")",
+      "Bash(timeout 5 node dist/index.js)",
+      "Read(//tmp/**)",
+      "Bash(cd \"/c/Users/rapoz/Documents/web-dev/memorykit/mcp-server\" && rm -f memorykit-mcp-server-0.2.0.tgz)",
+      "Bash(node -e ' *)",
+      "Bash(gh run *)",
+      "Bash(npm install *)",
+      "Bash(node -e \"console.log\\(require\\('./node_modules/sharp/package.json'\\).version\\)\")",
+      "Bash(npm audit *)",
+      "Bash(node -e \"console.log\\(require\\('./node_modules/onnxruntime-node/package.json'\\).version\\)\")",
+      "Bash(node -e \"console.log\\('onnxruntime-node:', require\\('./node_modules/onnxruntime-node/package.json'\\).version\\); console.log\\('sharp:', require\\('./node_modules/sharp/package.json'\\).version\\)\")",
+      "PowerShell(cd \"C:\\\\Users\\\\rapoz\\\\Documents\\\\web-dev\\\\memorykit\\\\mcp-server\"; $env:MEMORYKIT_SKIP_EMBEDDINGS = \"true\"; npm run test:ci 2>&1 | Select-Object -Last 12; Remove-Item Env:\\\\MEMORYKIT_SKIP_EMBEDDINGS)",
+      "Bash(npx -y memorykit-mcp-server@1.0.0 --version)",
+      "WebSearch",
+      "Bash(cd \"/c/Users/rapoz/Documents/web-dev/memorykit\" && rm -f mcp-server/src/api-client.ts mcp-server/src/process-manager.ts mcp-server/src/process-manager-dev.ts mcp-server/src/index-dev.ts mcp-server/src/tools/index.ts mcp-server/test-docker.js docs/DOCKER_SETUP.md)",
+      "Bash(cd \"/c/Users/rapoz/Documents/web-dev/memorykit/mcp-server\" && grep -n \"function computeROIStats\\\\|function truncateToTokenBudget\\\\|function sortByRelevanceScore\\\\|function calculateRelevance\\\\|function tokenize\" src/memory/retrieve.ts)",
+      "Read(//c/c/Users/rapoz/Documents/web-dev/memorykit/mcp-server/src/memory/**)",
+      "Bash(cd \"/c/Users/rapoz/Documents/web-dev/memorykit/mcp-server\" && grep -n -i \"roi\\\\|token\\\\|efficiency\\\\|saved\" README.md)",
+      "Read(//c/c/Users/rapoz/Documents/web-dev/memorykit/mcp-server/**)",
+      "Bash(cd \"/c/Users/rapoz/Documents/web-dev/memorykit/mcp-server\" && grep -n -A3 \"description:\" src/tools/retrieve-context.ts src/tools/store-memory.ts | head -40)",
+      "Read(//c/c/Users/rapoz/Documents/web-dev/memorykit/mcp-server/src/tools/**)",
+      "Bash(cd \"/c/Users/rapoz/Documents/web-dev/memorykit\" && grep -n -A 20 \"mcp-server-publish:\" .github/workflows/main.yml)",
+      "Read(//c/c/Users/rapoz/Documents/web-dev/memorykit/.github/workflows/**)"
+    ],
+    "additionalDirectories": [
+      "c:\\c\\Users\\rapoz\\Documents\\web-dev\\memorykit\\mcp-server",
+      "c:\\c\\Users\\rapoz\\Documents\\web-dev\\memorykit\\docs"
     ]
   }
 }
