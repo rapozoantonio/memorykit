@@ -127,40 +127,102 @@ export async function initCommand(options: {
       console.log(`\n⚠️  .mcp.json already exists, skipping`);
     }
 
-    // Create CLAUDE.md for Claude Code AI instructions
-    const claudeMdPath = join(workingDir, "CLAUDE.md");
-    const claudeMdContent = `# Project Memory Instructions
+    // Create .cursor/mcp.json for Cursor editor (R1)
+    const cursorDir = join(workingDir, ".cursor");
+    const cursorMcpConfigPath = join(cursorDir, "mcp.json");
+
+    if (!existsSync(cursorMcpConfigPath)) {
+      mkdirSync(cursorDir, { recursive: true });
+
+      const cursorMcpConfig = {
+        mcpServers: {
+          memorykit: {
+            command: "memorykit",
+            env: {
+              MEMORYKIT_PROJECT: "${workspaceFolder}",
+            },
+          },
+        },
+      };
+
+      writeFileSync(
+        cursorMcpConfigPath,
+        JSON.stringify(cursorMcpConfig, null, 2),
+        "utf-8",
+      );
+
+      console.log(`\n✅ Created Cursor config: ${cursorMcpConfigPath}`);
+      console.log(`💡 Restart Cursor for changes to take effect`);
+    } else {
+      console.log(`\n⚠️  .cursor/mcp.json already exists, skipping`);
+    }
+
+    // Create AGENTS.md — canonical instruction file read by Claude Code, Copilot, and Cursor (R8)
+    const agentsMdPath = join(workingDir, "AGENTS.md");
+    const agentsMdContent = `## Memory System (MemoryKit)
 
 This project uses **MemoryKit** for persistent memory across AI conversations.
 
-## Before Starting Any Task
+### Before Starting Any Task
 
-Use \`retrieve_context\` to check for relevant memories:
-- Past decisions about the topic
-- Bugs or issues encountered before
-- Established patterns and conventions
+Call \`retrieve_context\` with the task description to load relevant past decisions, bugs, and patterns.
 
-## When Completing Work
+### When Completing Work
 
-Use \`store_memory\` to save important knowledge:
-- **facts** layer: Architecture decisions, technology choices, constraints
-- **episodes** layer: Bugs fixed, failed approaches, incidents
-- **procedures** layer: Coding patterns, conventions, workflows
+Use \`store_memory\` to save important knowledge. Choose the right layer:
+- **facts**: Architecture decisions, technology choices, constraints
+- **episodes**: Bugs fixed, failed approaches, incidents
+- **procedures**: Coding patterns, conventions, workflows
 
-## Memory Best Practices
+Always include the reasoning (WHY), not just the decision (WHAT).
 
-- Include WHY (reasoning), not just WHAT (the decision)
-- Reference related files or code when relevant
-- Use descriptive tags for better retrieval
+### ROI Tracking
+
+When you spent real effort discovering a fact, pass \`acquisition_context\` to enable exact savings measurement instead of estimates:
+- \`tokens_consumed\`: approximate tokens used discovering this fact
+- \`tool_calls\`: number of searches or file reads made
+
+Example: \`store_memory({ content: "...", acquisition_context: { tokens_consumed: 800, tool_calls: 3 } })\`
+
+### Handling Store Rejections
+
+If \`store_memory\` returns \`stored: false\`, read the \`suggestion\` field:
+- **Near-duplicate**: call \`update_memory\` with the returned \`entry_id\` — do not create a duplicate entry
+- **Importance floor**: content was too routine — no action needed
+- If \`stored: true\` with a \`warning\`: a contradiction was detected — update the conflicting entry if it is stale
 `;
+
+    if (!existsSync(agentsMdPath)) {
+      writeFileSync(agentsMdPath, agentsMdContent, "utf-8");
+      console.log(`\n✅ Created agent instructions: ${agentsMdPath}`);
+      console.log(`💡 Read by Claude Code, GitHub Copilot, and Cursor`);
+    } else {
+      const existingAgentsContent = readFileSync(agentsMdPath, "utf-8");
+      if (!existingAgentsContent.includes("## Memory System (MemoryKit)")) {
+        writeFileSync(
+          agentsMdPath,
+          existingAgentsContent + "\n" + agentsMdContent,
+          "utf-8",
+        );
+        console.log(`\n✅ Added MemoryKit section to: ${agentsMdPath}`);
+      } else {
+        console.log(
+          `\n⚠️  AGENTS.md already has MemoryKit instructions, skipping`,
+        );
+      }
+    }
+
+    // Create CLAUDE.md for Claude Code — thin import of AGENTS.md (R8)
+    const claudeMdPath = join(workingDir, "CLAUDE.md");
+    const claudeMdContent = `@AGENTS.md\n`;
 
     if (!existsSync(claudeMdPath)) {
       writeFileSync(claudeMdPath, claudeMdContent, "utf-8");
       console.log(`\n✅ Created Claude Code instructions: ${claudeMdPath}`);
     } else {
-      // Check if MemoryKit section already exists
+      // Check if AGENTS.md import already exists
       const existingContent = readFileSync(claudeMdPath, "utf-8");
-      if (!existingContent.includes("## Before Starting Any Task")) {
+      if (!existingContent.includes("@AGENTS.md")) {
         writeFileSync(
           claudeMdPath,
           existingContent + "\n\n" + claudeMdContent,
@@ -190,11 +252,18 @@ This project uses MemoryKit for persistent memory across conversations.
 - Use \`store_memory\` to save architectural decisions (facts layer)
 - Use \`store_memory\` to record bugs and fixes (episodes layer)
 - Use \`store_memory\` to document patterns and conventions (procedures layer)
+- Always include the reasoning (WHY), not just the decision (WHAT)
 
-### Memory Best Practices
-- Include the reasoning (WHY), not just the decision (WHAT)
-- Reference related files when relevant
-- Use descriptive tags for better retrieval
+### ROI Tracking
+Pass \`acquisition_context\` when you spent real effort discovering a fact — this enables exact savings measurement:
+\`store_memory({ content: "...", acquisition_context: { tokens_consumed: 800, tool_calls: 3 } })\`
+\`tokens_consumed\` ≈ tokens used; \`tool_calls\` = number of searches/reads made.
+
+### Handling Store Rejections
+If \`store_memory\` returns \`stored: false\`, check the \`suggestion\` field:
+- **Near-duplicate**: call \`update_memory\` with the returned \`entry_id\` — do not create a duplicate
+- **Importance floor**: content was too routine — no action needed
+- \`stored: true\` with \`warning\`: contradiction detected — update the conflicting entry if stale
 `;
 
     if (!existsSync(copilotInstructionsPath)) {

@@ -46,6 +46,28 @@ export function getConsolidationStatus() {
 }
 
 /**
+ * Trigger debounced background consolidation if the interval has elapsed.
+ * Fire-and-forget. Shared by store and update operations.
+ */
+export function triggerConsolidationIfDue(scope: "project" | "global"): void {
+  const config = loadConfig();
+  if (
+    config.consolidation.auto &&
+    Date.now() - lastConsolidationTime > CONSOLIDATION_INTERVAL_MS
+  ) {
+    lastConsolidationTime = Date.now();
+    consolidateMemory({ scope, dry_run: false })
+      .then(() => {
+        lastConsolidationStatus = "success";
+      })
+      .catch((err: Error) => {
+        lastConsolidationStatus = "failed";
+        console.error("Background consolidation failed:", err);
+      });
+  }
+}
+
+/**
  * Store a memory entry
  */
 export async function storeMemory(
@@ -187,23 +209,7 @@ export async function storeMemory(
   }
 
   // Debounced consolidation - fire and forget
-  if (
-    config.consolidation.auto &&
-    Date.now() - lastConsolidationTime > CONSOLIDATION_INTERVAL_MS
-  ) {
-    lastConsolidationTime = Date.now();
-    consolidateMemory({
-      scope: scope === Scope.Project ? "project" : "global",
-      dry_run: false,
-    })
-      .then(() => {
-        lastConsolidationStatus = "success";
-      })
-      .catch((err: Error) => {
-        lastConsolidationStatus = "failed";
-        console.error("Background consolidation failed:", err);
-      });
-  }
+  triggerConsolidationIfDue(scope === Scope.Project ? "project" : "global");
 
   return {
     stored: true,

@@ -32,6 +32,10 @@ import { updateMemoryTool, handleUpdateMemory } from "./tools/update-memory.js";
 import { forgetMemoryTool, handleForgetMemory } from "./tools/forget-memory.js";
 import { consolidateTool, handleConsolidate } from "./tools/consolidate.js";
 import { listMemoriesTool, handleListMemories } from "./tools/list-memories.js";
+import {
+  initializeMemoryTool,
+  handleInitializeMemory,
+} from "./tools/initialize-memory.js";
 
 /**
  * Create and configure MCP server
@@ -52,6 +56,7 @@ export function createServer(): Server {
   // Register tool list handler
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
     tools: [
+      initializeMemoryTool,
       storeMemoryTool,
       retrieveContextTool,
       updateMemoryTool,
@@ -79,6 +84,9 @@ export function createServer(): Server {
 
     try {
       switch (name) {
+        case "initialize_memory":
+          return await handleInitializeMemory(args);
+
         case "store_memory":
           return await handleStoreMemory(args);
 

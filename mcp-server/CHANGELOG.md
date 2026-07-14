@@ -7,6 +7,22 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.1.0] — 2026-07-14
+
+### Added
+
+- **`initialize_memory` MCP tool** — creates the memory directory structure from inside the MCP protocol (no CLI required). Idempotent; safe to call multiple times. Removes the hard dependency on running `memorykit init` before the server can accept tool calls.
+- **`list_memories` tag filtering** — new `tags` parameter returns only entries matching any of the given tags across all layers.
+- **`list_memories` content mode** — new `include_content:true` parameter returns entry title, content, and importance alongside counts. `max_entries` caps result size (default 50).
+- **Cursor editor support in `memorykit init`** — generates `.cursor/mcp.json` alongside the existing `.mcp.json` and `.vscode/mcp.json` configs.
+- **`AGENTS.md` as the canonical AI instruction file** — `memorykit init` now writes a single `AGENTS.md` with full MemoryKit instructions (including ROI tracking guidance and store-rejection handling). `CLAUDE.md` becomes a thin `@AGENTS.md` import so Claude Code, Copilot, and Cursor all read from one source.
+
+### Fixed
+
+- **Consolidation now triggers on `update_memory`** — previously auto-consolidation only fired after `store_memory`; updates were excluded, meaning long-running projects that primarily updated existing entries would never auto-consolidate.
+
+---
+
 ## [1.0.1] — 2026-06-18
 
 ### Changed

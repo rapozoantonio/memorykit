@@ -112,19 +112,30 @@ describe("CLI init command", () => {
     expect(existsSync(join(testDir, ".mcp.json"))).toBe(true);
   });
 
-  it("should create CLAUDE.md with MemoryKit instructions", async () => {
+  it("should create CLAUDE.md with thin @AGENTS.md import", async () => {
     await initCommand({});
 
     const claudeMd = join(testDir, "CLAUDE.md");
     expect(existsSync(claudeMd)).toBe(true);
 
     const content = readFileSync(claudeMd, "utf-8");
-    expect(content).toContain("# Project Memory Instructions");
-    expect(content).toContain("MemoryKit");
+    expect(content).toContain("@AGENTS.md");
+  });
+
+  it("should create AGENTS.md with full MemoryKit instructions", async () => {
+    await initCommand({});
+
+    const agentsMd = join(testDir, "AGENTS.md");
+    expect(existsSync(agentsMd)).toBe(true);
+
+    const content = readFileSync(agentsMd, "utf-8");
+    expect(content).toContain("## Memory System (MemoryKit)");
     expect(content).toContain("retrieve_context");
     expect(content).toContain("store_memory");
-    expect(content).toContain("## Before Starting Any Task");
-    expect(content).toContain("## When Completing Work");
+    expect(content).toContain("### Before Starting Any Task");
+    expect(content).toContain("### When Completing Work");
+    expect(content).toContain("acquisition_context");
+    expect(content).toContain("entry_id");
   });
 
   it("should create .github/copilot-instructions.md with MemoryKit section", async () => {
@@ -143,7 +154,7 @@ describe("CLI init command", () => {
     expect(content).toContain("store_memory");
   });
 
-  it("should append to existing CLAUDE.md without MemoryKit section", async () => {
+  it("should append @AGENTS.md import to existing CLAUDE.md without MemoryKit section", async () => {
     const claudeMd = join(testDir, "CLAUDE.md");
     const existingContent = "# My Project\n\nExisting instructions here.\n";
 
@@ -158,10 +169,8 @@ describe("CLI init command", () => {
     const newContent = readFileSync(claudeMd, "utf-8");
     expect(newContent).toContain("# My Project");
     expect(newContent).toContain("Existing instructions here");
-    expect(newContent).toContain("## Before Starting Any Task");
-    expect(newContent.indexOf("Existing instructions")).toBeLessThan(
-      newContent.indexOf("## Before Starting Any Task"),
-    );
+    // Should have appended the AGENTS.md import
+    expect(newContent).toContain("@AGENTS.md");
   });
 
   it("should append to existing copilot-instructions.md without MemoryKit section", async () => {
@@ -189,9 +198,9 @@ describe("CLI init command", () => {
     const claudeMd = join(testDir, "CLAUDE.md");
     const existingContent = `# My Project
 
-## Before Starting Any Task
+@AGENTS.md
 
-Already has MemoryKit stuff.
+Already has MemoryKit import.
 `;
 
     const { writeFileSync } = await import("fs");

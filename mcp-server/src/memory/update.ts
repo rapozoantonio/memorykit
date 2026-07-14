@@ -13,6 +13,7 @@ import {
   resolveGlobalRoot,
 } from "../storage/scope-resolver.js";
 import { calculateImportance } from "../cognitive/amygdala.js";
+import { triggerConsolidationIfDue } from "./store.js";
 
 /**
  * Update a memory entry by ID
@@ -59,6 +60,12 @@ export async function updateMemory(
 
   // Apply update
   const success = await updateEntry(found.filePath, entryId, entryUpdates);
+
+  // Debounced consolidation - fire and forget (same gate as storeMemory)
+  if (success) {
+    const scope = (found.entry.scope ?? "project") as "project" | "global";
+    triggerConsolidationIfDue(scope);
+  }
 
   return {
     updated: success,

@@ -70,6 +70,9 @@ export const ConsolidateSchema = z.object({
 export const ListMemoriesSchema = z.object({
   scope: RetrieveScopeEnum.optional(),
   layer: MemoryLayerEnum.optional(),
+  tags: z.array(z.string()).optional(),
+  include_content: z.boolean().optional(),
+  max_entries: z.number().int().positive().optional(),
 });
 
 // ─── Validation helper ─────────────────────────────────────────────────────────
