@@ -7,6 +7,19 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.1.1] — 2026-07-20
+
+### Fixed
+
+- **retrieve\_context token budget now actually applied** — retrieval was ignoring the Prefrontal Controller's per-query-type budgets and always using the flat `max_tokens_estimate` config value (default 4,000). It now uses the correct scoped budgets: ~200 for continuation, ~300 for procedural, ~500 for fact retrieval, ~1,500 for deep recall, ~2,000 for complex queries.
+- **Quality gate duplicate thresholds now read from `memorykit.yaml`** — `checkDuplicate` was using hardcoded Jaccard (0.6) and word-overlap (3) values regardless of what was configured. `store_memory` now passes the loaded config thresholds.
+- **Complex query routing missing episodes layer** — `resolveFiles` for the `Complex` query type omitted `episodes/*.md` from the project file list, so deep episode history was never searched on complex queries.
+- **`forget_memory` now cleans the entity graph** — deleting an entry no longer leaves dangling references in the entity graph. Scope detection also fixed for Windows paths (uses `path.resolve` + `path.sep` to avoid prefix-collision between project names like `my-app` and `my-app-v2`).
+- **Compaction used wrong field name** — `consolidate` wrote `content` instead of `what` when truncating long episode entries, producing entries the parser could not read back.
+- README: tool count corrected to 7 (reflects `initialize_memory` added in 1.1.0), importance score range corrected to `0.1–0.95`, `max_tokens` default updated to reflect query-type budgets.
+
+---
+
 ## [1.1.0] — 2026-07-14
 
 ### Added
