@@ -9,7 +9,11 @@ import type {
 } from "../types/memory.js";
 import { MemoryScope } from "../types/memory.js";
 import { MemoryLayer } from "../types/memory.js";
-import { classifyQuery, resolveFiles } from "../cognitive/prefrontal.js";
+import {
+  classifyQuery,
+  resolveFiles,
+  estimateTokenBudget,
+} from "../cognitive/prefrontal.js";
 import { calculateEffectiveScore } from "../cognitive/amygdala.js";
 import { CommonWords } from "../cognitive/patterns.js";
 import { readMemoryFile, listMemoryFiles } from "../storage/file-manager.js";
@@ -65,8 +69,9 @@ export async function retrieveContext(
     };
   }
 
-  // Determine token budget
-  const maxTokens = options.max_tokens ?? config.context.max_tokens_estimate;
+  // Determine token budget - use query-type-specific budget unless overridden
+  const maxTokens =
+    options.max_tokens ?? estimateTokenBudget(classification.type);
 
   // Collect entries from both scopes
   const projectEntries = await collectEntries(

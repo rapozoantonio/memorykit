@@ -129,6 +129,7 @@ export async function storeMemory(
   const dupeCheck = checkDuplicate(
     { what: normalized.fields.what, tags: normalized.tags },
     existingInFile,
+    config.quality_gates,
   );
   if (!dupeCheck.pass) {
     return {

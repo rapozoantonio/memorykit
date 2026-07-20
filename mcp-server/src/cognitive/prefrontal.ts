@@ -182,7 +182,12 @@ export function resolveFiles(
 
     case QType.Complex:
       return {
-        project: ["facts/*.md", "working/session.md", "procedures/*.md"],
+        project: [
+          "facts/*.md",
+          "episodes/*.md",
+          "working/session.md",
+          "procedures/*.md",
+        ],
         global: ["facts/*.md", "procedures/*.md"],
       };
 

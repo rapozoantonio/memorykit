@@ -13,14 +13,14 @@ Most memory tools store everything and make you pay full re-discovery cost on ev
 - **It shrinks itself** — stale entries auto-prune, important ones auto-promote. No manual cleanup, no slow bloat after months of use.
 - **You see the receipt** — every retrieval reports real numbers: tokens spent learning a fact vs. tokens spent recalling it.
 
-| You ask | Context budget |
-| --- | --- |
-| "what was I doing?" | ~200 tokens |
-| "how do I deploy this?" | ~300 tokens |
-| "what's our DB choice?" | ~500 tokens |
-| "what happened last week?" | ~1,500 tokens |
+| You ask                    | Context budget |
+| -------------------------- | -------------- |
+| "what was I doing?"        | ~200 tokens    |
+| "how do I deploy this?"    | ~300 tokens    |
+| "what's our DB choice?"    | ~500 tokens    |
+| "what happened last week?" | ~1,500 tokens  |
 
-*Example: spend 1,200 tokens figuring something out once, recall it for ~70 tokens later — MemoryKit reports that 94% efficiency gain back to you, every time.*
+_Example: spend 1,200 tokens figuring something out once, recall it for ~70 tokens later — MemoryKit reports that 94% efficiency gain back to you, every time._
 
 ## Accurate, Not Just Fast
 
@@ -101,7 +101,15 @@ The instruction files tell AI models to automatically check memory before starti
 
 ### 4. Restart your AI assistant
 
-The 6 MemoryKit tools will appear in the tool list.
+The 7 MemoryKit tools will appear in the tool list:
+
+- `initialize_memory` — Create memory storage structure (run once per project)
+- `store_memory` — Save new memories
+- `retrieve_context` — Query relevant memories
+- `update_memory` — Modify existing entries
+- `forget_memory` — Delete entries
+- `list_memories` — Browse stored memories
+- `consolidate` — Manual cleanup/optimization (auto-runs every 5 minutes)
 
 ---
 
@@ -109,7 +117,7 @@ The 6 MemoryKit tools will appear in the tool list.
 
 ### `store_memory`
 
-Save a new memory entry. Importance is scored automatically (0.0–1.0) and the correct layer is selected based on content type.
+Save a new memory entry. Importance is scored automatically (0.1–0.95, never absolute 0 or 1) and the correct layer is selected based on content type.
 
 | Parameter             | Type     | Required | Description                                                             |
 | --------------------- | -------- | -------- | ----------------------------------------------------------------------- |
@@ -136,12 +144,12 @@ Save a new memory entry. Importance is scored automatically (0.0–1.0) and the 
 
 Get relevant memory context for a query. The Prefrontal Controller classifies your query and routes to the appropriate memory layers automatically.
 
-| Parameter    | Type     | Required | Description                             |
-| ------------ | -------- | -------- | --------------------------------------- |
-| `query`      | string   | ✅       | Natural language question or topic      |
-| `max_tokens` | number   | ❌       | Token budget override (default: 4000)   |
-| `layers`     | string[] | ❌       | Restrict to specific layers             |
-| `scope`      | enum     | ❌       | `all` (default), `project`, or `global` |
+| Parameter    | Type     | Required | Description                                                      |
+| ------------ | -------- | -------- | ---------------------------------------------------------------- |
+| `query`      | string   | ✅       | Natural language question or topic                               |
+| `max_tokens` | number   | ❌       | Token budget override (default: query-type based — 200 to 2,000) |
+| `layers`     | string[] | ❌       | Restrict to specific layers                                      |
+| `scope`      | enum     | ❌       | `all` (default), `project`, or `global`                          |
 
 **Example:**
 
@@ -158,12 +166,12 @@ Get relevant memory context for a query. The Prefrontal Controller classifies yo
 
 Modify an existing memory entry by ID.
 
-| Parameter    | Type     | Required | Description                          |
-| ------------ | -------- | -------- | ------------------------------------ |
-| `entry_id`   | string   | ✅       | Entry ID to update                   |
-| `content`    | string   | ❌       | New content                          |
-| `tags`       | string[] | ❌       | Updated tags                         |
-| `importance` | number   | ❌       | Manual importance override (0.0–1.0) |
+| Parameter    | Type     | Required | Description                           |
+| ------------ | -------- | -------- | ------------------------------------- |
+| `entry_id`   | string   | ✅       | Entry ID to update                    |
+| `content`    | string   | ❌       | New content                           |
+| `tags`       | string[] | ❌       | Updated tags                          |
+| `importance` | number   | ❌       | Manual importance override (0.1–0.95) |
 
 ---
 
@@ -297,7 +305,7 @@ AI Assistant (Claude / Copilot / Cursor)
      ↓
 MemoryKit MCP Server (Node.js)
      ├── Prefrontal Controller   Query classification & file routing
-     ├── Amygdala Engine         Importance scoring (9-signal, 0.0–1.0)
+     ├── Amygdala Engine         Importance scoring (9-signal, 0.1–0.95)
      ├── Quality Gates           Importance floor, duplicate detection, contradiction warning
      ├── Normalizer              Prose-to-MML normalization pipeline
      └── File Storage            Local Markdown files (~/.memorykit/)
@@ -311,7 +319,7 @@ MemoryKit MCP Server (Node.js)
 - _Procedural_ → `procedures/*.md`
 - _Complex_ → all layers
 
-**Importance Scoring** (Amygdala): 9 signals scored 0.0–1.0 — decision language, explicit importance markers, code blocks, technical depth, novelty, sentiment, conversation context, question patterns, and MML structure.
+**Importance Scoring** (Amygdala): 9 signals scored 0.1–0.95 — decision language, explicit importance markers, code blocks, technical depth, novelty, sentiment, conversation context, question patterns, and MML structure.
 
 ---
 

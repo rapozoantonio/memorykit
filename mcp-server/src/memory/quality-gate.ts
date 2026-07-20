@@ -39,19 +39,26 @@ export function checkDuplicate(
     tags: string[];
   },
   existingEntries: MemoryEntry[],
+  config?: {
+    duplicate_jaccard_threshold: number;
+    duplicate_word_overlap: number;
+  },
 ): GateResult {
+  const jaccardThreshold = config?.duplicate_jaccard_threshold ?? 0.6;
+  const wordOverlapThreshold = config?.duplicate_word_overlap ?? 3;
+
   for (const existing of existingEntries) {
     // Calculate Jaccard similarity for tags
     const tagOverlap = jaccardSimilarity(newEntry.tags, existing.tags);
 
-    if (tagOverlap >= 0.6) {
+    if (tagOverlap >= jaccardThreshold) {
       // Check content overlap (significant words)
       const contentOverlap = significantWordOverlap(
         newEntry.what,
         existing.what,
       );
 
-      if (contentOverlap >= 3) {
+      if (contentOverlap >= wordOverlapThreshold) {
         return {
           pass: false,
           reason: `Near-duplicate of existing memory: "${existing.title}"`,

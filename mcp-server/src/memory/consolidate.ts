@@ -263,7 +263,7 @@ async function compactEpisodes(
 
         return {
           ...entry,
-          content: truncated,
+          what: truncated,
           source: "consolidation" as const,
         };
       }

@@ -126,7 +126,12 @@ export function parseEntry(
   }
 
   // Validate required fields
-  if (!fields.what || fields.tags === undefined || !fields.importance || !fields.created) {
+  if (
+    !fields.what ||
+    fields.tags === undefined ||
+    !fields.importance ||
+    !fields.created
+  ) {
     return null;
   }
 
@@ -191,7 +196,9 @@ export function serializeEntry(entry: MemoryEntry): string {
   // Heading
   parts.push(`### ${entry.title}`);
 
-  // Always include required fields first
+  // Always include required fields first.
+  // entry.what is the authoritative field — entry.fields.what is a parse-time
+  // copy and may be stale after in-memory mutations (e.g. compaction).
   parts.push(`- **what**: ${entry.what}`);
 
   // Add other fields from the fields dictionary (excluding what which we already added)
