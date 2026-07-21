@@ -242,4 +242,98 @@ Already configured.
       existsSync(join(testDir, ".github", "copilot-instructions.md")),
     ).toBe(false);
   });
+
+  it("should add alwaysLoad:true to .mcp.json", async () => {
+    await initCommand({});
+
+    const mcpJson = join(testDir, ".mcp.json");
+    expect(existsSync(mcpJson)).toBe(true);
+    const config = JSON.parse(readFileSync(mcpJson, "utf-8"));
+    expect(config.mcpServers.memorykit.alwaysLoad).toBe(true);
+  });
+
+  it("should create .claude/settings.local.json with SessionStart hook", async () => {
+    await initCommand({});
+
+    const settingsPath = join(testDir, ".claude", "settings.local.json");
+    expect(existsSync(settingsPath)).toBe(true);
+
+    const settings = JSON.parse(readFileSync(settingsPath, "utf-8"));
+    const hooks = settings.hooks?.SessionStart;
+    expect(Array.isArray(hooks)).toBe(true);
+    const mcpHook = hooks[0].hooks.find(
+      (h: any) => h.type === "mcp_tool" && h.server === "memorykit",
+    );
+    expect(mcpHook).toBeDefined();
+    expect(mcpHook.tool).toBe("retrieve_context");
+    expect(mcpHook.input.scope).toBe("all");
+  });
+
+  it("should merge SessionStart hook into existing settings.local.json", async () => {
+    const settingsPath = join(testDir, ".claude", "settings.local.json");
+    const { mkdirSync, writeFileSync } = await import("fs");
+    mkdirSync(join(testDir, ".claude"), { recursive: true });
+    writeFileSync(
+      settingsPath,
+      JSON.stringify({ permissions: { allow: ["Bash"] } }, null, 2),
+      "utf-8",
+    );
+
+    await initCommand({});
+
+    const settings = JSON.parse(readFileSync(settingsPath, "utf-8"));
+    expect(settings.permissions.allow).toContain("Bash");
+    expect(Array.isArray(settings.hooks?.SessionStart)).toBe(true);
+  });
+
+  it("should not duplicate SessionStart hook if already present", async () => {
+    await initCommand({});
+    await initCommand({});
+
+    const settingsPath = join(testDir, ".claude", "settings.local.json");
+    const settings = JSON.parse(readFileSync(settingsPath, "utf-8"));
+    expect(settings.hooks.SessionStart).toHaveLength(1);
+  });
+
+  it("should create /recall skill", async () => {
+    await initCommand({});
+
+    const skillPath = join(testDir, ".claude", "skills", "recall", "SKILL.md");
+    expect(existsSync(skillPath)).toBe(true);
+    const content = readFileSync(skillPath, "utf-8");
+    expect(content).toContain("name: recall");
+    expect(content).toContain("allowed-tools: mcp__memorykit__retrieve_context");
+    expect(content).toContain("retrieve_context");
+  });
+
+  it("should create /save skill", async () => {
+    await initCommand({});
+
+    const skillPath = join(testDir, ".claude", "skills", "save", "SKILL.md");
+    expect(existsSync(skillPath)).toBe(true);
+    const content = readFileSync(skillPath, "utf-8");
+    expect(content).toContain("name: save");
+    expect(content).toContain("allowed-tools: mcp__memorykit__store_memory");
+    expect(content).toContain("acquisition_context");
+  });
+
+  it("should create .claude/rules/memory.md with paths frontmatter", async () => {
+    await initCommand({});
+
+    const rulesPath = join(testDir, ".claude", "rules", "memory.md");
+    expect(existsSync(rulesPath)).toBe(true);
+    const content = readFileSync(rulesPath, "utf-8");
+    expect(content).toContain("paths:");
+    expect(content).toContain("src/**/*");
+    expect(content).toContain("retrieve_context");
+    expect(content).toContain("store_memory");
+  });
+
+  it("should not create hooks/skills/rules when global flag is used", async () => {
+    await initCommand({ global: true });
+
+    expect(existsSync(join(testDir, ".claude", "settings.local.json"))).toBe(false);
+    expect(existsSync(join(testDir, ".claude", "skills", "recall", "SKILL.md"))).toBe(false);
+    expect(existsSync(join(testDir, ".claude", "rules", "memory.md"))).toBe(false);
+  });
 });

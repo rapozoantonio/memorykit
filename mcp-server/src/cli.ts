@@ -109,6 +109,7 @@ export async function initCommand(options: {
         mcpServers: {
           memorykit: {
             command: "memorykit",
+            alwaysLoad: true,
             args: [],
             env: {},
           },
@@ -294,6 +295,154 @@ If \`store_memory\` returns \`stored: false\`, check the \`suggestion\` field:
           `\n⚠️  MemoryKit instructions already in copilot-instructions.md, skipping`,
         );
       }
+    }
+
+    // .claude/settings.local.json — SessionStart hook for guaranteed retrieve_context
+    const claudeSettingsDir = join(workingDir, ".claude");
+    const settingsLocalPath = join(claudeSettingsDir, "settings.local.json");
+    mkdirSync(claudeSettingsDir, { recursive: true });
+
+    const memorykitHook = {
+      matcher: ".*",
+      hooks: [
+        {
+          type: "mcp_tool",
+          server: "memorykit",
+          tool: "retrieve_context",
+          input: {
+            query: "what was I working on and what decisions were made",
+            scope: "all",
+          },
+        },
+      ],
+    };
+
+    if (!existsSync(settingsLocalPath)) {
+      writeFileSync(
+        settingsLocalPath,
+        JSON.stringify({ hooks: { SessionStart: [memorykitHook] } }, null, 2),
+        "utf-8",
+      );
+      console.log(`\n✅ Created Claude Code hooks: ${settingsLocalPath}`);
+    } else {
+      try {
+        const existing = JSON.parse(readFileSync(settingsLocalPath, "utf-8"));
+        const hasHook = existing.hooks?.SessionStart?.some((h: any) =>
+          h.hooks?.some(
+            (hh: any) =>
+              hh.server === "memorykit" && hh.tool === "retrieve_context",
+          ),
+        );
+        if (!hasHook) {
+          existing.hooks = existing.hooks ?? {};
+          existing.hooks.SessionStart = existing.hooks.SessionStart ?? [];
+          existing.hooks.SessionStart.push(memorykitHook);
+          writeFileSync(
+            settingsLocalPath,
+            JSON.stringify(existing, null, 2),
+            "utf-8",
+          );
+          console.log(`\n✅ Added MemoryKit hook to: ${settingsLocalPath}`);
+        } else {
+          console.log(
+            `\n⚠️  MemoryKit hook already in settings.local.json, skipping`,
+          );
+        }
+      } catch {
+        console.log(
+          `\n⚠️  .claude/settings.local.json exists but couldn't be parsed, skipping`,
+        );
+      }
+    }
+
+    // .claude/skills/recall/SKILL.md — /recall slash command
+    const recallSkillDir = join(claudeSettingsDir, "skills", "recall");
+    const recallSkillPath = join(recallSkillDir, "SKILL.md");
+    if (!existsSync(recallSkillPath)) {
+      mkdirSync(recallSkillDir, { recursive: true });
+      writeFileSync(
+        recallSkillPath,
+        `---
+name: recall
+description: Retrieve relevant memories from memorykit for the current task or topic. Use when starting a task, switching context, or when the user asks about past decisions, patterns, or bugs.
+allowed-tools: mcp__memorykit__retrieve_context
+---
+
+Call retrieve_context with the specific task or topic as the query — be precise.
+A narrow query ("auth token refresh bug") returns better results than a broad one ("authentication").
+If an argument is provided (e.g. /recall auth module), use it directly as the query.
+Otherwise, derive the query from what the user is currently trying to do.
+Return the results without reformatting.
+`,
+        "utf-8",
+      );
+      console.log(`\n✅ Created /recall skill: ${recallSkillPath}`);
+    } else {
+      console.log(`\n⚠️  /recall skill already exists, skipping`);
+    }
+
+    // .claude/skills/save/SKILL.md — /save slash command
+    const saveSkillDir = join(claudeSettingsDir, "skills", "save");
+    const saveSkillPath = join(saveSkillDir, "SKILL.md");
+    if (!existsSync(saveSkillPath)) {
+      mkdirSync(saveSkillDir, { recursive: true });
+      writeFileSync(
+        saveSkillPath,
+        `---
+name: save
+description: Save an important discovery, decision, or pattern to memorykit memory. Use after fixing a bug, making an architecture decision, establishing a coding convention, or completing significant work.
+allowed-tools: mcp__memorykit__store_memory
+---
+
+Call store_memory with precise, self-contained content — write it as if explaining to a
+future developer who has no session context. Include the WHY, not just the WHAT.
+
+Choose the correct layer:
+- facts: architecture decisions, technology choices, permanent constraints
+- episodes: bugs fixed, failed approaches, incidents, root causes
+- procedures: coding patterns, conventions, repeatable workflows
+- working: active task context (auto-expires after 7 days)
+
+If this discovery took real investigation (multiple tool calls, reading several files),
+estimate tokens_consumed and tool_calls and pass them in acquisition_context.
+This enables exact ROI measurement on retrieval.
+`,
+        "utf-8",
+      );
+      console.log(`\n✅ Created /save skill: ${saveSkillPath}`);
+    } else {
+      console.log(`\n⚠️  /save skill already exists, skipping`);
+    }
+
+    // .claude/rules/memory.md — path-scoped retrieval reminder
+    const rulesDir = join(claudeSettingsDir, "rules");
+    const rulesPath = join(rulesDir, "memory.md");
+    if (!existsSync(rulesPath)) {
+      mkdirSync(rulesDir, { recursive: true });
+      writeFileSync(
+        rulesPath,
+        `---
+paths:
+  - "src/**/*"
+  - "*.ts"
+  - "*.py"
+  - "*.go"
+  - "*.rs"
+  - "*.java"
+  - "*.kt"
+---
+
+Before modifying this file, check if retrieve_context has been called for the specific
+component or module being changed. Use the filename or module name as the query — not a
+generic query. Specific queries return better results.
+
+After discovering a bug root cause or an important constraint in this code, call store_memory.
+`,
+        "utf-8",
+      );
+      console.log(`\n✅ Created path rules: ${rulesPath}`);
+    } else {
+      console.log(`\n⚠️  .claude/rules/memory.md already exists, skipping`);
     }
   }
 }

@@ -7,6 +7,23 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.2.0] — 2026-07-21
+
+### Added
+
+- **`memorykit init` now generates Claude Code hooks** — writes `.claude/settings.local.json` with a `SessionStart` hook that calls `retrieve_context` automatically every time a session opens, before Claude reads the first message. Previously memory retrieval depended on Claude following CLAUDE.md instructions; now it is guaranteed by the framework. If the file already exists, the hook is merged rather than overwriting existing settings.
+- **`/recall` skill** — `memorykit init` creates `.claude/skills/recall/SKILL.md`. A slash command Claude can invoke automatically (based on description match) or manually (`/recall auth module`). Instructs Claude to form narrow, specific queries — the key to retrieval precision.
+- **`/save` skill** — `memorykit init` creates `.claude/skills/save/SKILL.md`. Guides Claude to write self-contained, WHY-focused memory content with the correct layer and `acquisition_context` for ROI tracking.
+- **Path-scoped rules** — `memorykit init` creates `.claude/rules/memory.md` with a `paths` glob covering common source file patterns. The rule loads on-demand (zero startup cost) when Claude accesses matching files and nudges it to call `retrieve_context` with the specific module as the query.
+- **MCP server `instructions` field** — the server now sends a concise instructions string in the MCP InitializeResult handshake. Claude reads this before any CLAUDE.md loads, ensuring the server is self-describing for users who never ran `memorykit init` (Claude Desktop, raw installs).
+- **`alwaysLoad: true` in generated `.mcp.json`** — prevents Claude Code's tool search from deferring memorykit tool schemas. Tools are always visible from session open, no discovery latency.
+
+### Changed
+
+- `memorykit init` output now lists every generated file so developers can see exactly what was created.
+
+---
+
 ## [1.1.1] — 2026-07-20
 
 ### Fixed
