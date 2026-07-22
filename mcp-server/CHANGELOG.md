@@ -7,6 +7,14 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.3.1] — 2026-07-22
+
+### Fixed
+
+- **`statusLine` written to wrong settings file** — `memorykit init` was writing `statusLine: { command: "..." }` to the project-scoped `.claude/settings.local.json`, which does not accept that key. This caused Claude Code to reject the entire file ("Settings file failed to parse — Invalid value"), disabling all hooks and permissions. The statusLine is now written to `~/.claude/settings.json` (user-level settings) where it is valid.
+
+---
+
 ## [1.3.0] — 2026-07-22
 
 ### Added

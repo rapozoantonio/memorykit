@@ -309,10 +309,9 @@ Rejection handling (\`suggestion\` field):
     if (!existsSync(settingsLocalPath)) {
       const newSettings = sanitizeHookSettings({
         hooks: { SessionStart: [memorykitHook] },
-        statusLine: { command: "memorykit statusline" },
       });
       writeFileSync(settingsLocalPath, JSON.stringify(newSettings, null, 2), "utf-8");
-      console.log(`\n✅ Created Claude Code hooks + statusline: ${settingsLocalPath}`);
+      console.log(`\n✅ Created Claude Code hooks: ${settingsLocalPath}`);
     } else {
       try {
         const existing = JSON.parse(stripJsonComments(readFileSync(settingsLocalPath, "utf-8")));
@@ -335,12 +334,6 @@ Rejection handling (\`suggestion\` field):
           console.log(`\n✅ Added MemoryKit hook to: ${settingsLocalPath}`);
         } else {
           console.log(`\n⚠️  MemoryKit hook already in settings.local.json, skipping`);
-        }
-
-        if (!existing.statusLine?.command) {
-          existing.statusLine = { command: "memorykit statusline" };
-          changed = true;
-          console.log(`\n✅ Added statusLine to: ${settingsLocalPath}`);
         }
 
         if (changed) {
@@ -399,6 +392,27 @@ If discovery took real investigation, pass acquisition_context with tokens_consu
       console.log(`\n✅ Created /save skill: ${saveSkillPath}`);
     } else {
       console.log(`\n⚠️  /save skill already exists, skipping`);
+    }
+
+    // ~/.claude/settings.json — user-level statusLine (not project settings.local.json)
+    // statusLine is valid only in user settings, not project-scoped settings.local.json
+    const userClaudeDir = join(homedir(), ".claude");
+    const userSettingsPath = join(userClaudeDir, "settings.json");
+    try {
+      let userSettings: Record<string, unknown> = {};
+      if (existsSync(userSettingsPath)) {
+        userSettings = JSON.parse(stripJsonComments(readFileSync(userSettingsPath, "utf-8")));
+      }
+      if (!userSettings.statusLine) {
+        userSettings.statusLine = { command: "memorykit statusline" };
+        mkdirSync(userClaudeDir, { recursive: true });
+        writeFileSync(userSettingsPath, JSON.stringify(userSettings, null, 2), "utf-8");
+        console.log(`\n✅ Added statusLine to: ${userSettingsPath}`);
+      } else {
+        console.log(`\n⚠️  statusLine already set in ~/.claude/settings.json, skipping`);
+      }
+    } catch {
+      console.log(`\n⚠️  Could not update ~/.claude/settings.json for statusLine, skipping`);
     }
 
     // .claude/rules/memory.md — compressed
