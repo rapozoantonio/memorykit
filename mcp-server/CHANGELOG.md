@@ -7,6 +7,24 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.3.0] — 2026-07-22
+
+### Added
+
+- **`memorykit compress`** — new CLI command that compresses `.memorykit/` memory files using the local `claude --print` CLI (no API key required if Claude Code is installed). Strips filler from natural language fields while preserving all MML structure: headings, field keys, code blocks, inline code, tags, importance scores, and acquisition stats are never touched. Validates output before writing; retries once with a targeted fix prompt if validation fails. Backups stored in OS temp dir (outside `.memorykit/`) so they are never accidentally loaded as memory entries.
+- **`memorykit statusline`** — new CLI command that outputs a one-line badge for the Claude Code status bar: `[MEMORYKIT] 🧠 47 entries · 8.2k saved`. `memorykit init` now writes `statusLine: { command: "memorykit statusline" }` to `.claude/settings.local.json` automatically. Outputs nothing if no memory exists (clean degradation).
+- **Hook validation before settings writes** — `sanitizeHookSettings()` validates every hook entry's schema before writing `settings.local.json`. Prevents Claude Code from silently discarding the entire settings file due to a single malformed hook entry from another plugin.
+
+### Fixed
+
+- **JSONC parsing in settings merge** — `memorykit init` now strips `//` and `/* */` comments before parsing `settings.local.json`. Claude Code's own settings files sometimes contain comments; the raw `JSON.parse` would throw and silently skip hook installation for those users.
+
+### Changed
+
+- **Generated templates compressed** — `AGENTS.md`, `copilot-instructions.md`, `/recall` skill, `/save` skill, `.claude/rules/memory.md`, and the MCP server `instructions` field are all written in denser form. Same information, ~50% fewer words. Saves ~245 input tokens per session, permanently, for every project that runs `memorykit init`.
+
+---
+
 ## [1.2.0] — 2026-07-21
 
 ### Added
