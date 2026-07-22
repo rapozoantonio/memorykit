@@ -18,6 +18,8 @@ async function main() {
       "init",
       "status",
       "consolidate",
+      "compress",
+      "statusline",
       "-h",
       "--help",
       "-V",

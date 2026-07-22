@@ -51,13 +51,9 @@ export function createServer(): Server {
         tools: {},
       },
       instructions:
-        "Call retrieve_context before starting any task — use a specific, narrow query " +
-        "(module name, bug description, decision topic) not a generic one. Narrow queries " +
-        "return fewer, more relevant results and cost fewer tokens than broad ones. " +
-        "Call store_memory after discovering architecture decisions (facts layer), bugs and " +
-        "root causes (episodes layer), or coding conventions (procedures layer). Always " +
-        "include the WHY in stored content, not just the WHAT. " +
-        "Call initialize_memory once per project if other tools return initialization errors.",
+        "Before any task: call retrieve_context with a narrow query (module name, bug, topic) — not generic. " +
+        "After work: call store_memory for architecture decisions (facts), bugs+root causes (episodes), or conventions (procedures). Always include WHY, not just WHAT. " +
+        "Call initialize_memory if other tools return initialization errors.",
     },
   );
 

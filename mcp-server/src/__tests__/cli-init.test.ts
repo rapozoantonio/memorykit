@@ -132,8 +132,8 @@ describe("CLI init command", () => {
     expect(content).toContain("## Memory System (MemoryKit)");
     expect(content).toContain("retrieve_context");
     expect(content).toContain("store_memory");
-    expect(content).toContain("### Before Starting Any Task");
-    expect(content).toContain("### When Completing Work");
+    expect(content).toContain("facts");
+    expect(content).toContain("episodes");
     expect(content).toContain("acquisition_context");
     expect(content).toContain("entry_id");
   });
