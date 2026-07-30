@@ -25,6 +25,7 @@ import {
 } from "../storage/scope-resolver.js";
 import { loadConfig } from "../storage/config-loader.js";
 import { extractHeader } from "../storage/entry-parser.js";
+import { removeEntryFromGraph } from "./entity-graph.js";
 import { readFile } from "fs/promises";
 import { existsSync } from "fs";
 
@@ -177,6 +178,13 @@ async function processWorkingMemory(
         await appendEntry(targetPath, promotedEntry);
       }),
     );
+
+    // Clean up entity graph edges for pruned entries so they don't dangle
+    // (forget_memory already does this; auto-pruning here didn't).
+    const graphScope = scope === Scope.Project ? "project" : "global";
+    await Promise.all(
+      toPrune.map((entry) => removeEntryFromGraph(entry.id, graphScope)),
+    );
   }
 
   return { actions, pruned, promoted };
@@ -310,6 +318,7 @@ async function enforceWorkingCap(
 
   const toKeep: MemoryEntry[] = [];
   const toPromote: MemoryEntry[] = [];
+  const toPrune: MemoryEntry[] = [];
 
   for (let i = 0; i < sorted.length; i++) {
     if (i < toRemove) {
@@ -324,6 +333,7 @@ async function enforceWorkingCap(
           importance: sorted[i].importance,
         });
       } else {
+        toPrune.push(sorted[i]);
         actions.push({
           action: "pruned",
           entry_id: sorted[i].id,
@@ -353,6 +363,12 @@ async function enforceWorkingCap(
           promoted_from: Layer.Working,
         });
       }),
+    );
+
+    // Clean up entity graph edges for pruned entries so they don't dangle.
+    const graphScope = scope === Scope.Project ? "project" : "global";
+    await Promise.all(
+      toPrune.map((entry) => removeEntryFromGraph(entry.id, graphScope)),
     );
   }
 

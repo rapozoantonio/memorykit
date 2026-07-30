@@ -47,18 +47,14 @@ Memories are stored under `~/.memorykit/<project-name>/` — isolated per projec
 
 ## Quick Start
 
-### 1. Install
-
-```bash
-npm install -g memorykit-mcp-server
-```
-
-### 2. Initialize in your project
+### 1. Initialize in your project
 
 ```bash
 cd /your/project
-memorykit init
+npx -y memorykit-mcp-server@latest init
 ```
+
+No global install needed — `npx` always runs the latest published version, so you never have to remember to update. (If you'd rather pin a version or skip the network check on every launch, `npm install -g memorykit-mcp-server` still works; see [Keeping MemoryKit up to date](#keeping-memorykit-up-to-date).)
 
 This creates:
 
@@ -70,7 +66,7 @@ This creates:
 
 The instruction files tell AI models to automatically check memory before starting tasks and save learnings when completing work. This ensures memory is used consistently without manual prompting.
 
-### 3. Configure your AI assistant
+### 2. Configure your AI assistant
 
 **GitHub Copilot in VS Code** — Already configured! `memorykit init` creates `.vscode/mcp.json` and `.github/copilot-instructions.md` automatically. The instructions tell Copilot to check memory before tasks and save learnings after.
 
@@ -88,7 +84,8 @@ The instruction files tell AI models to automatically check memory before starti
 {
   "mcpServers": {
     "memorykit": {
-      "command": "memorykit",
+      "command": "npx",
+      "args": ["-y", "memorykit-mcp-server@latest"],
       "env": {
         "MEMORYKIT_PROJECT": "/absolute/path/to/your/project"
       }
@@ -99,7 +96,7 @@ The instruction files tell AI models to automatically check memory before starti
 
 **Cursor** — Add to Cursor MCP settings using the same format as Claude Desktop.
 
-### 4. Restart your AI assistant
+### 3. Restart your AI assistant
 
 The 7 MemoryKit tools will appear in the tool list:
 
@@ -110,6 +107,27 @@ The 7 MemoryKit tools will appear in the tool list:
 - `forget_memory` — Delete entries
 - `list_memories` — Browse stored memories
 - `consolidate` — Manual cleanup/optimization (auto-runs every 5 minutes)
+
+---
+
+## Keeping MemoryKit up to date
+
+The config examples above use `npx -y memorykit-mcp-server@latest` as the `command`/`args`. Every time your AI assistant launches the server, `npx` resolves `@latest` against the npm registry and runs that version — so you're always on the newest release without doing anything.
+
+If you'd rather not pay the small `npx` resolution check on every launch (or want to pin a specific version for reproducibility), install globally instead and point `command` at the fixed binary:
+
+```bash
+npm install -g memorykit-mcp-server
+```
+
+```json
+{
+  "command": "memorykit",
+  "env": { "MEMORYKIT_PROJECT": "/absolute/path/to/your/project" }
+}
+```
+
+With a global install there's no auto-update — periodically run `npm install -g memorykit-mcp-server@latest` (or `npm outdated -g` to check) to pick up new releases.
 
 ---
 

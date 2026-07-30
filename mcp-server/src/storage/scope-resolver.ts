@@ -2,9 +2,10 @@
  * Scope resolver - Resolve paths for project and global memory
  */
 
-import { existsSync } from "fs";
+import { existsSync, renameSync } from "fs";
 import { join, resolve, dirname, basename } from "path";
 import { homedir } from "os";
+import { createHash } from "crypto";
 import type { MemoryLayer } from "../types/memory.js";
 import { MemoryScope } from "../types/memory.js";
 
@@ -81,9 +82,17 @@ export function getWorkingDirectory(): string {
   return startPath;
 }
 
+// resolveProjectRoot() is called on nearly every tool invocation (retrieve,
+// store, forget, update, consolidate, entity-graph, ...). The legacy-folder
+// migration check below does synchronous disk I/O, so it's gated to run at
+// most once per resolved root per process instead of on every call.
+const _migrationChecked = new Set<string>();
+
 /**
- * Resolve project root (~/.memorykit/<project-name>/ directory)
- * Uses project folder name as subdirectory for isolation
+ * Resolve project root (~/.memorykit/<project-name>-<path-hash>/ directory)
+ * Folder name is human-readable but suffixed with a hash of the absolute
+ * project path, so two unrelated repos with the same folder name (e.g. two
+ * "api" projects) don't silently share a memory namespace.
  */
 export function resolveProjectRoot(): string {
   const projectPath = getWorkingDirectory();
@@ -99,8 +108,35 @@ export function resolveProjectRoot(): string {
     projectName = "default";
   }
 
-  // Store project memories under ~/.memorykit/<project-name>/
-  return join(homedir(), ".memorykit", projectName);
+  const pathHash = createHash("sha256")
+    .update(resolve(projectPath))
+    .digest("hex")
+    .slice(0, 8);
+  const dirName = `${projectName}-${pathHash}`;
+
+  const memoryKitRoot = join(homedir(), ".memorykit");
+  const newRoot = join(memoryKitRoot, dirName);
+
+  // One-time migration: versions before the path hash keyed memory storage
+  // by folder name alone, which collided for same-named repos on the same
+  // machine. Move existing data into the hashed directory so upgrading
+  // doesn't orphan a user's memory history.
+  if (!_migrationChecked.has(newRoot)) {
+    _migrationChecked.add(newRoot);
+    const legacyRoot = join(memoryKitRoot, projectName);
+    if (!existsSync(newRoot) && existsSync(legacyRoot)) {
+      try {
+        renameSync(legacyRoot, newRoot);
+      } catch (error) {
+        console.error(
+          `Failed to migrate legacy memory directory ${legacyRoot} -> ${newRoot}:`,
+          error,
+        );
+      }
+    }
+  }
+
+  return newRoot;
 }
 
 /**

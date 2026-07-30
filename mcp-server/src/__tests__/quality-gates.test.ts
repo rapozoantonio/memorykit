@@ -11,11 +11,72 @@ import {
   checkImportanceFloor,
   checkDuplicate,
   checkContradiction,
+  checkSecrets,
 } from "../memory/quality-gate.js";
 import { MemoryLayer, MemoryScope } from "../types/memory.js";
 import type { MemoryEntry } from "../types/memory.js";
 
 describe("Quality Gates (M3)", () => {
+  describe("Gate 0: Secret Detection", () => {
+    it("should reject content with an AWS access key", () => {
+      const result = checkSecrets(
+        "the prod access key is AKIAABCDEFGHIJKLMNOP, rotate quarterly",
+      );
+
+      expect(result.pass).toBe(false);
+      expect(result.reason).toBeTruthy();
+      expect(result.suggestion).toBeTruthy();
+    });
+
+    it("should reject content with a GitHub token", () => {
+      const result = checkSecrets(
+        "use ghp_1234567890abcdef1234567890abcdef1234 to authenticate",
+      );
+
+      expect(result.pass).toBe(false);
+    });
+
+    it("should reject content with a PEM private key", () => {
+      const result = checkSecrets(
+        "-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA\n-----END RSA PRIVATE KEY-----",
+      );
+
+      expect(result.pass).toBe(false);
+    });
+
+    it("should reject content with a generic quoted secret assignment", () => {
+      const result = checkSecrets(
+        'api_key: "not_a_real_credential_placeholder_value"',
+      );
+
+      expect(result.pass).toBe(false);
+    });
+
+    it("should reject content with a JWT", () => {
+      const result = checkSecrets(
+        "session token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U",
+      );
+
+      expect(result.pass).toBe(false);
+    });
+
+    it("should allow ordinary content that merely mentions credentials conceptually", () => {
+      const result = checkSecrets(
+        "IMPORTANT: The API reads its API key from the API_KEY environment variable at startup, not from a config file.",
+      );
+
+      expect(result.pass).toBe(true);
+    });
+
+    it("should allow content with no credential-shaped substrings", () => {
+      const result = checkSecrets(
+        "We decided to use PostgreSQL 16 as the primary database because of ACID guarantees.",
+      );
+
+      expect(result.pass).toBe(true);
+    });
+  });
+
   describe("Gate 1: Importance Floor", () => {
     it("should reject content below threshold", () => {
       const result = checkImportanceFloor(0.08, 0.15);
@@ -262,6 +323,21 @@ describe("Quality Gates (M3)", () => {
       } catch (err) {
         console.error("Failed to clean up test directory:", err);
       }
+    });
+
+    it("should reject content containing a credential before any other gate runs", async () => {
+      const secretContent =
+        "IMPORTANT: the deploy key is AKIAABCDEFGHIJKLMNOP, needed for CI";
+
+      const result = await storeMemory(secretContent, {
+        tags: ["deployment"],
+        layer: MemoryLayer.Facts,
+        scope: MemoryScope.Project,
+      });
+
+      expect(result.stored).toBe(false);
+      expect(result.reason).toBeTruthy();
+      expect(result.entry_id).toBe("");
     });
 
     it("should reject low-importance content", async () => {

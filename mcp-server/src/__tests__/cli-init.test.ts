@@ -36,7 +36,11 @@ describe("CLI init command", () => {
     const content = JSON.parse(readFileSync(vscodeConfig, "utf-8"));
     expect(content.servers.memorykit).toBeDefined();
     expect(content.servers.memorykit.type).toBe("stdio");
-    expect(content.servers.memorykit.command).toBe("memorykit");
+    expect(content.servers.memorykit.command).toBe("npx");
+    expect(content.servers.memorykit.args).toEqual([
+      "-y",
+      "memorykit-mcp-server@latest",
+    ]);
     expect(content.servers.memorykit.env.MEMORYKIT_PROJECT).toBe(
       "${workspaceFolder}",
     );
@@ -50,8 +54,11 @@ describe("CLI init command", () => {
 
     const content = JSON.parse(readFileSync(claudeConfig, "utf-8"));
     expect(content.mcpServers.memorykit).toBeDefined();
-    expect(content.mcpServers.memorykit.command).toBe("memorykit");
-    expect(content.mcpServers.memorykit.args).toEqual([]);
+    expect(content.mcpServers.memorykit.command).toBe("npx");
+    expect(content.mcpServers.memorykit.args).toEqual([
+      "-y",
+      "memorykit-mcp-server@latest",
+    ]);
     expect(content.mcpServers.memorykit.env).toEqual({});
   });
 

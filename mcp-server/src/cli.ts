@@ -151,7 +151,8 @@ export async function initCommand(options: {
         servers: {
           memorykit: {
             type: "stdio",
-            command: "memorykit",
+            command: "npx",
+            args: ["-y", "memorykit-mcp-server@latest"],
             env: { MEMORYKIT_PROJECT: "${workspaceFolder}" },
           },
         },
@@ -168,9 +169,9 @@ export async function initCommand(options: {
       writeFileSync(claudeMcpConfigPath, JSON.stringify({
         mcpServers: {
           memorykit: {
-            command: "memorykit",
+            command: "npx",
             alwaysLoad: true,
-            args: [],
+            args: ["-y", "memorykit-mcp-server@latest"],
             env: {},
           },
         },
@@ -189,7 +190,8 @@ export async function initCommand(options: {
       writeFileSync(cursorMcpConfigPath, JSON.stringify({
         mcpServers: {
           memorykit: {
-            command: "memorykit",
+            command: "npx",
+            args: ["-y", "memorykit-mcp-server@latest"],
             env: { MEMORYKIT_PROJECT: "${workspaceFolder}" },
           },
         },

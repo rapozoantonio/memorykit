@@ -16,6 +16,7 @@ import { appendEntry, readMemoryFile } from "../storage/file-manager.js";
 import {
   resolveFilePath,
   resolveLayerPath,
+  resolveScopeRoot,
 } from "../storage/scope-resolver.js";
 import { loadConfig } from "../storage/config-loader.js";
 import { consolidateMemory } from "./consolidate.js";
@@ -24,10 +25,12 @@ import {
   checkImportanceFloor,
   checkDuplicate,
   checkContradiction,
+  checkSecrets,
 } from "./quality-gate.js";
 import { existsSync } from "fs";
 import { readdir } from "fs/promises";
 import { embedText } from "./embedding.js"; // Tier 1
+import { setCachedEmbedding } from "./embedding-cache.js";
 import { indexEntities } from "./entity-graph.js"; // Tier 2
 
 // Consolidation debouncing with status tracking
@@ -75,6 +78,21 @@ export async function storeMemory(
   options: StoreOptions = {},
 ): Promise<StoreResult> {
   const config = loadConfig();
+
+  // Gate 0: Secret Detection (before anything else touches the content)
+  const secretCheck = checkSecrets(content);
+  if (!secretCheck.pass) {
+    return {
+      stored: false,
+      layer: Layer.Working,
+      file: "",
+      importance: 0,
+      tags: options.tags ?? [],
+      entry_id: "",
+      reason: secretCheck.reason,
+      suggestion: secretCheck.suggestion,
+    };
+  }
 
   // Auto-detect tags if not provided
   const tags = options.tags ?? autoDetectTags(content);
@@ -185,6 +203,12 @@ export async function storeMemory(
   try {
     const embeddingText = `${entry.title} ${entry.what} ${entry.tags.join(" ")}`;
     entry.embedding = await embedText(embeddingText);
+    await setCachedEmbedding(
+      resolveScopeRoot(scope),
+      entry.id,
+      embeddingText,
+      entry.embedding,
+    );
   } catch (error) {
     // Embedding generation failed - log but don't block storage
     console.warn("Failed to generate embedding:", error);

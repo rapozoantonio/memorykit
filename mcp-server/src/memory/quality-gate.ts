@@ -12,6 +12,41 @@ export interface GateResult {
 }
 
 /**
+ * Patterns for common credential/secret formats. Deliberately limited to
+ * high-precision, well-known prefixes/formats rather than entropy-based
+ * heuristics, to keep false positives rare.
+ */
+const SECRET_PATTERNS: RegExp[] = [
+  /-----BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----/, // PEM private key
+  /AKIA[0-9A-Z]{16}/, // AWS access key ID
+  /gh[pousr]_[A-Za-z0-9]{36,}/, // GitHub tokens (personal/oauth/user/app/refresh)
+  /xox[baprs]-[A-Za-z0-9-]{10,}/, // Slack tokens
+  /sk-[A-Za-z0-9]{20,}/, // OpenAI/Anthropic-style secret keys
+  /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/, // JWT
+  /(?:api[_-]?key|secret|password|token)\s*[:=]\s*['"][A-Za-z0-9/+_.-]{16,}['"]/i, // generic assignment
+];
+
+/**
+ * Gate 0: Secret Detection
+ * Rejects content that looks like it contains a credential, so pasted
+ * .env snippets, tokens in error logs, etc. never get persisted to disk
+ * (memory content is recalled into future conversations indefinitely).
+ */
+export function checkSecrets(content: string): GateResult {
+  for (const pattern of SECRET_PATTERNS) {
+    if (pattern.test(content)) {
+      return {
+        pass: false,
+        reason: "Content appears to contain a credential or secret.",
+        suggestion:
+          "Remove the secret before storing — memory is persisted to disk and recalled into future conversations. Store the fact without the credential value (e.g. \"uses an API key from env var X\") instead.",
+      };
+    }
+  }
+  return { pass: true };
+}
+
+/**
  * Gate 1: Importance Floor
  * Reject entries below configured threshold
  */

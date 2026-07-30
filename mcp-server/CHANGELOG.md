@@ -7,6 +7,34 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.4.0] — 2026-07-30
+
+### Fixed
+
+- **Embeddings recomputed on every retrieval** — `MemoryEntry.embedding` is intentionally never written to the human-readable `.md` files, but there was also no cache anywhere else, so every `retrieve_context` call re-ran the local transformer model on every entry with no persisted embedding (i.e. all of them) on every call. Added a sidecar cache (`.embeddings-cache.json` per scope root, keyed by entry id + content hash) so embeddings are computed once and reused.
+- **Relevance "noise filter" was a no-op** — `calculateRelevance()` floored token-overlap relevance at `0.1`, and the noise-filter threshold was also `0.1`, so a zero-overlap entry always cleared the filter (`0.1 >= 0.1`). Zero-overlap entries now score `0` and are correctly excluded; the floor of `0.1` still applies once there's at least a partial match, so a single weak match isn't scored disproportionately low.
+- **Short technical queries never searched Facts** — `classifyQuery()` treated any query under 5 words without a `?` as a bare conversational continuation, restricting retrieval to Working memory only. Single-word queries like `"database"` or `"auth"` never reached the Facts layer at all. Short queries containing a known technical term now classify as `FactRetrieval`.
+- **`onnxruntime-node` version mismatch** broke local embedding generation entirely in dev/test — `@xenova/transformers` expects `1.14.0`, but a stale lockfile had resolved `1.16.3`, which fails to load with `no available backend found`. Regenerated `package-lock.json` to pin the correct version.
+- Relevance filter threshold lowered from `0.1` to `0.05` — weak-but-real semantic matches (topically related content in the `0.05–0.1` cosine range) were being excluded entirely instead of just ranked lower, which could hide a high-importance entry from a loosely-matching query.
+- **Auto-pruned entries left orphaned entity-graph edges** — `consolidate()` (which runs automatically every 5 minutes) removes low-importance/over-capacity entries from Working memory, but never called `removeEntryFromGraph`, unlike `forget_memory` which does. Entity graph data (Tier 2) silently accumulated dangling references on every normal consolidation cycle. Both pruning paths now clean up the entity graph.
+- **Memory writes weren't crash-safe** — `writeMemoryFile()` wrote directly to the target path with plain `fs.writeFile`; a crash or concurrent external process mid-write could leave a memory file (holding multiple entries) truncated or corrupted. Writes now go to a temp file and `rename` into place, so the original content is untouched until the atomic rename succeeds.
+- **Project memory could collide across unrelated repos** — `resolveProjectRoot()` keyed storage by folder basename alone (`~/.memorykit/<name>/`), so two different repos both named e.g. `api` on the same machine would silently share (and pollute) the same memory. The directory name now includes a hash of the absolute project path. Existing installations are migrated automatically on first run — the old folder is renamed into the new path if the new one doesn't already exist; the migration check itself is now cached per process so `resolveProjectRoot()` (called on nearly every tool invocation) doesn't do disk I/O on every single call.
+- **Embedding cache had a concurrent-write race** — `embedding-cache.ts`'s `loadCache()` had no dedup for concurrent first-callers on the same scope root, so e.g. backfilling embeddings for multiple entries in one `retrieve_context` call (`Promise.all`) could have each caller read/parse an independent copy of the cache and silently clobber each other's writes. Concurrent callers now share a single in-flight promise resolving to the same object, so all their writes land.
+- **`writeMemoryFile()`'s temp filename could collide** under rapid concurrent writes to the same path (pid + millisecond timestamp only) — added a random suffix.
+- **Embedding cache write silently failed on a project's first-ever store** — `setCachedEmbedding()` is called before `appendEntry()` has created the scope root directory (embedding generation runs ahead of the actual file write in `store.ts`), so the cache write would throw `ENOENT` and get swallowed by the caller's catch-and-warn. Now ensures the directory exists before writing.
+
+### Added
+
+- **Secret-detection write gate** — `store_memory` now rejects content matching common credential formats (AWS keys, GitHub/Slack/OpenAI-style tokens, PEM private keys, generic `api_key: "..."` assignments) before it's ever written to disk, since stored memory is recalled into future conversations indefinitely.
+- `retrieve_context`'s tool description now notes that returned content was written in a prior session and may contain untrusted text — a cheap prompt-injection-defense hardening for a coding agent that treats tool output as trusted.
+- Test coverage for the secret-detection gate (unit + `store_memory` integration) and a dedicated `embedding-cache.test.ts` (including a concurrency regression test for the race fixed above).
+
+### Changed
+
+- **`memorykit init` now generates MCP configs using `npx -y memorykit-mcp-server@latest`** instead of a fixed `memorykit` binary command, for `.vscode/mcp.json`, `.mcp.json`, and `.cursor/mcp.json`. Every server launch now resolves the latest published version automatically — no more manually re-running `npm install -g` to stay current. A global install (`npm install -g memorykit-mcp-server`) is still supported for users who want a pinned version or to skip the per-launch `npx` resolution check; see the README's "Keeping MemoryKit up to date" section.
+
+---
+
 ## [1.3.1] — 2026-07-22
 
 ### Fixed

@@ -198,7 +198,9 @@ describe("Retrieval Output Format (M4)", () => {
         });
       }
 
-      const result = await retrieveContext("entry", {
+      // 5+ words with no special trigger words routes past Continuation
+      // (Working-only) into Complex classification, which reads Facts.
+      const result = await retrieveContext("entry information data details records", {
         scope: MemoryScope.Project,
         max_tokens: 500,
       });
@@ -319,9 +321,13 @@ describe("Retrieval Output Format (M4)", () => {
     });
 
     it("should have proper MML heading format", async () => {
-      const result = await retrieveContext("validation", {
-        scope: MemoryScope.Project,
-      });
+      // 5+ words with no special trigger words routes to Complex
+      // classification, which reads Procedures (where the "validation"
+      // entry lives) instead of only Working memory.
+      const result = await retrieveContext(
+        "validation rules for input data everywhere",
+        { scope: MemoryScope.Project },
+      );
 
       // Headings should be ### format
       const headings = result.context.match(/^###\s+.+$/gm);

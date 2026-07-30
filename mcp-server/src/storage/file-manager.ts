@@ -2,9 +2,10 @@
  * File manager - Read/write operations for memory files
  */
 
-import { readFile, writeFile, mkdir, readdir, stat, unlink } from "fs/promises";
+import { readFile, writeFile, mkdir, readdir, stat, unlink, rename } from "fs/promises";
 import { existsSync } from "fs";
 import { join, dirname, basename } from "path";
+import { randomBytes } from "crypto";
 
 // ─── Per-file write lock ────────────────────────────────────────────────────────
 // Serializes concurrent write operations on the same file path.
@@ -137,15 +138,25 @@ export async function writeMemoryFile(
   entries: MemoryEntry[],
   header?: string,
 ): Promise<void> {
+  // Write to a temp file and rename into place so a crash or concurrent
+  // external process mid-write can't leave filePath truncated/corrupted —
+  // the original content stays intact until the rename (atomic on the
+  // same filesystem) succeeds. The random suffix (on top of pid+timestamp)
+  // prevents two same-process writes within the same millisecond from
+  // computing the same temp path and clobbering each other.
+  const tempPath = `${filePath}.${process.pid}.${Date.now()}.${randomBytes(4).toString("hex")}.tmp`;
   try {
-    // Ensure directory exists
     await ensureDirectoryExists(dirname(filePath));
-
-    // Serialize and write
     const content = serializeEntries(entries, header);
-    await writeFile(filePath, content, "utf-8");
+    await writeFile(tempPath, content, "utf-8");
+    await rename(tempPath, filePath);
   } catch (error) {
     console.error(`Failed to write memory file ${filePath}:`, error);
+    try {
+      await unlink(tempPath);
+    } catch {
+      // temp file may not have been created yet — nothing to clean up
+    }
     throw error;
   }
 }

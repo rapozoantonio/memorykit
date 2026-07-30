@@ -32,7 +32,8 @@ This plan moves the critical path from advisory to deterministic. Not by adding 
 {
   "mcpServers": {
     "memorykit": {
-      "command": "memorykit",
+      "command": "npx",
+      "args": ["-y", "memorykit-mcp-server@latest"],
       "alwaysLoad": true,
       "env": {
         "MEMORYKIT_PROJECT": "${workspaceFolder}"

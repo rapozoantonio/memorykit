@@ -105,6 +105,16 @@ function quickClassify(query: string): QueryClassification | null {
     isShort: tokens.length < 5,
   };
 
+  // Short queries route to Working memory only (Continuation) unless they
+  // contain a technical term — "database" or "auth" should still search
+  // Facts, not be treated as a bare conversational continuation.
+  if (signals.isShort && signals.hasTechTerms) {
+    return {
+      type: QType.FactRetrieval,
+      confidence: 0.55,
+    };
+  }
+
   if (signals.isShort && !signals.hasQuestionMark) {
     return {
       type: QType.Continuation,

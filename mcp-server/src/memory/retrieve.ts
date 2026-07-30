@@ -27,6 +27,7 @@ import { join } from "path";
 import { existsSync } from "fs";
 import { glob } from "glob";
 import { embedText, cosineSimilarity } from "./embedding.js"; // Tier 1
+import { getCachedEmbedding, setCachedEmbedding } from "./embedding-cache.js";
 
 /**
  * ROI statistics for retrieval
@@ -96,9 +97,13 @@ export async function retrieveContext(
   // Sort by relevance × effective score (async for embeddings)
   const scoredEntries = await sortByRelevanceScore(allEntries, query);
 
-  // Filter by relevance threshold to exclude noise
-  // Lower threshold (0.1) to allow semantic matches with lower scores
-  const MIN_RELEVANCE_SCORE = 0.1;
+  // Filter by relevance threshold to exclude noise. Zero-overlap token
+  // matches score exactly 0 (see calculateRelevance) so they're always
+  // excluded; this lower 0.05 bound exists to admit weak-but-real semantic
+  // matches (e.g. topically related content in the 0.05-0.1 cosine range)
+  // rather than hiding a high-importance entry just because a query didn't
+  // land squarely on it.
+  const MIN_RELEVANCE_SCORE = 0.05;
   const relevantEntries = scoredEntries
     .filter((s) => s.relevance >= MIN_RELEVANCE_SCORE)
     .map((s) => s.entry);
@@ -222,6 +227,11 @@ function calculateRelevance(
     }
   }
 
+  // No overlap at all must score below MIN_RELEVANCE_SCORE so the noise
+  // filter in retrieveContext can actually exclude it; the 0.1 floor below
+  // only applies once there's some match, so a single weak match isn't
+  // scored disproportionately low.
+  if (overlap === 0) return 0;
   return Math.max(0.1, overlap / queryTokens.size);
 }
 
@@ -247,13 +257,22 @@ async function sortByRelevanceScore(
     console.warn("Failed to generate query embedding:", error);
   }
 
-  // Pre-compute embeddings for entries that don't have them (async)
-  // This handles both old entries (no embedding) and new entries (embedding persisted)
+  // Pre-compute embeddings for entries that don't have them (async).
+  // Entries never carry a persisted `embedding` field (see MemoryEntry.embedding),
+  // so this checks the on-disk embedding cache before falling back to the model.
   const embeddingPromises = entries.map(async (entry) => {
     if (!entry.embedding && queryEmbedding) {
+      const entryText = `${entry.title} ${entry.what} ${entry.tags.join(" ")}`;
+      const root =
+        entry.scope === "project" ? resolveProjectRoot() : resolveGlobalRoot();
       try {
-        const entryText = `${entry.title} ${entry.what} ${entry.tags.join(" ")}`;
-        entry.embedding = await embedText(entryText);
+        const cached = await getCachedEmbedding(root, entry.id, entryText);
+        if (cached) {
+          entry.embedding = cached;
+        } else {
+          entry.embedding = await embedText(entryText);
+          await setCachedEmbedding(root, entry.id, entryText, entry.embedding);
+        }
       } catch (error) {
         // Failed to generate - leave undefined
       }
