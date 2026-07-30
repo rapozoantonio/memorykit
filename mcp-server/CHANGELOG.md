@@ -7,6 +7,12 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.4.1] — 2026-07-30
+
+### Added
+
+- **MCP Registry metadata** — added `mcpName` to `package.json` and a `server.json` manifest so the server can be published to the official [MCP Registry](https://registry.modelcontextprotocol.io), making it discoverable outside of npm search.
+
 ## [1.4.0] — 2026-07-30
 
 ### Fixed
