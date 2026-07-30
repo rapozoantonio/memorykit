@@ -83,3 +83,6 @@ SECRETS/
 
 # Claude user-specific settings (contains local paths)
 .claude/
+
+# Local CLI tools (downloaded, not part of the repo)
+mcp-publisher.exe

@@ -7,6 +7,12 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.4.2] — 2026-07-30
+
+### Fixed
+
+- **MCP Registry rejected the `server.json` submission** — the registry validates the `description` against the *npm-published* `package.json`'s `description` field (not `server.json`'s), which exceeded the registry's 100-character limit. Shortened `package.json`'s `description` to fit; this is also now the description shown on the npm listing page.
+
 ## [1.4.1] — 2026-07-30
 
 ### Added

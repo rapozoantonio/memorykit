@@ -1,17 +1,17 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.rapozoantonio/memorykit",
-  "description": "Cognitive memory for AI coding assistants — persistent memory across conversations for Claude, Copilot, and Cursor",
+  "description": "Cognitive memory for AI coding assistants — persistent memory across sessions",
   "repository": {
     "url": "https://github.com/rapozoantonio/memorykit",
     "source": "github"
   },
-  "version": "1.4.1",
+  "version": "1.4.2",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "memorykit-mcp-server",
-      "version": "1.4.1",
+      "version": "1.4.2",
       "transport": {
         "type": "stdio"
       }
