@@ -7,6 +7,12 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.4.3] — 2026-08-09
+
+### Fixed
+
+- **`memorykit init` wrote an invalid `statusLine` config** — the generated `~/.claude/settings.json` entry was `{ "command": "memorykit statusline" }`, missing the required `"type": "command"` field. Claude Code's schema rejects the whole file when this field is missing, silently disabling all permissions and settings in `~/.claude/settings.json` for every project. `init` now writes `{ "type": "command", "command": "memorykit statusline" }`, and re-running `init` will detect and repair a previously-broken `statusLine` entry left by older versions.
+
 ## [1.4.2] — 2026-07-30
 
 ### Fixed

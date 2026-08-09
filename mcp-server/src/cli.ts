@@ -405,11 +405,18 @@ If discovery took real investigation, pass acquisition_context with tokens_consu
       if (existsSync(userSettingsPath)) {
         userSettings = JSON.parse(stripJsonComments(readFileSync(userSettingsPath, "utf-8")));
       }
-      if (!userSettings.statusLine) {
-        userSettings.statusLine = { command: "memorykit statusline" };
+      const existingStatusLine = userSettings.statusLine as Record<string, unknown> | undefined;
+      const isBrokenMemorykitStatusLine =
+        existingStatusLine?.command === "memorykit statusline" && existingStatusLine.type !== "command";
+      if (!existingStatusLine) {
+        userSettings.statusLine = { type: "command", command: "memorykit statusline" };
         mkdirSync(userClaudeDir, { recursive: true });
         writeFileSync(userSettingsPath, JSON.stringify(userSettings, null, 2), "utf-8");
         console.log(`\n✅ Added statusLine to: ${userSettingsPath}`);
+      } else if (isBrokenMemorykitStatusLine) {
+        userSettings.statusLine = { type: "command", command: "memorykit statusline" };
+        writeFileSync(userSettingsPath, JSON.stringify(userSettings, null, 2), "utf-8");
+        console.log(`\n✅ Fixed statusLine in: ${userSettingsPath} (was missing required "type" field)`);
       } else {
         console.log(`\n⚠️  statusLine already set in ~/.claude/settings.json, skipping`);
       }

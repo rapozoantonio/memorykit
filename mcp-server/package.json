@@ -1,6 +1,6 @@
 {
   "name": "memorykit-mcp-server",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "description": "Cognitive memory for AI coding assistants — persistent memory across sessions",
   "mcpName": "io.github.rapozoantonio/memorykit",
   "type": "module",
